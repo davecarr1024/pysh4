@@ -10,6 +10,7 @@ _Rule = processor.Rule[_State, _Result]
 _Scope = processor.Scope[_State, _Result]
 _Processor = processor.Processor[_State, _Result]
 _Ref = processor.Ref[_State, _Result]
+_Or = processor.Or[_State, _Result]
 
 
 @dataclass(frozen=True)
@@ -69,3 +70,15 @@ class RefTest(unittest.TestCase):
     def test_apply_fail(self):
         with self.assertRaises(errors.Error):
             _Ref('a').apply(_Scope({}), [1])
+
+
+class OrTest(unittest.TestCase):
+    def test_apply(self):
+        self.assertEqual(
+            _Or([_Eq(1), _Eq(2)]).apply(_Scope({}), [1]),
+            _StateAndResult([], 1)
+        )
+
+    def test_apply_fail(self):
+        with self.assertRaises(errors.Error):
+            _Or([_Eq(1), _Eq(2)]).apply(_Scope({}), [3])
