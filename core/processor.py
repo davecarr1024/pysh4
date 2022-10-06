@@ -7,6 +7,7 @@ _State = TypeVar('_State')
 _Result = TypeVar('_Result')
 
 
+
 @dataclass(frozen=True)
 class StateAndResult(Generic[_State, _Result]):
     state: _State
@@ -17,6 +18,21 @@ class Rule(Generic[_State, _Result], ABC):
     @abstractmethod
     def apply(self, scope: 'Scope[_State, _Result]', state: _State) -> StateAndResult[_State, _Result]:
         ...
+
+@dataclass(frozen=True, kw_only=True)
+class StateError(Generic[_State], errors.NaryError):
+    state: _State
+
+
+@dataclass(frozen=True, kw_only=True)
+class RuleError(Generic[_State, _Result], StateError[_State]):
+    rule: Rule[_State,_Result]
+
+
+@dataclass(frozen=True, kw_only=True)
+class RuleNameError(errors.UnaryError):
+    rule_name: str
+
 
 
 @dataclass(frozen=True)
@@ -38,7 +54,7 @@ class Scope(Generic[_State, _Result], Mapping[str, Rule[_State, _Result]]):
         try:
             return self[rule_name].apply(self, state)
         except errors.Error as error:
-            raise error.with_rule_name(rule_name) from error
+            raise RuleNameError(rule_name=rule_name, child=error) from error
 
 
 @dataclass(frozen=True)
@@ -84,7 +100,7 @@ class Or(NaryRule[_State, _Result]):
                 return child.apply(scope, state)
             except errors.Error as error:
                 child_errors.append(error)
-        raise errors.Error(children=child_errors)
+        raise RuleError(rule=self, state=state, children=child_errors)
 
 
 class And(NaryRule[_State, _Result], ResultCombiner[_Result]):
@@ -94,7 +110,8 @@ class And(NaryRule[_State, _Result], ResultCombiner[_Result]):
             try:
                 child_state_and_result = child.apply(scope, state)
             except errors.Error as error:
-                raise error.as_child() from error
+                raise RuleError(rule=self, state=state,
+                                children=[error]) from error
             state = child_state_and_result.state
             results.append(child_state_and_result.result)
         return StateAndResult(state, self.combine_results(results))
@@ -117,7 +134,8 @@ class OneOrMore(UnaryRule[_State, _Result], ResultCombiner[_Result]):
         try:
             child_state_and_result = self.child.apply(scope, state)
         except errors.Error as error:
-            raise error.as_child() from error
+            raise RuleError(rule=self, state=state,
+                            children=[error]) from error
         state = child_state_and_result.state
         results: MutableSequence[_Result] = [child_state_and_result.result]
         while True:
