@@ -6,11 +6,7 @@ _Item = int
 _Result = int
 _Stream = stream_processor.Stream[_Item]
 _StateAndResult = stream_processor.StateAndResult[_Item, _Result]
-_Rule = stream_processor.Rule[_Item, _Result]
 _Scope = stream_processor.Scope[_Item, _Result]
-_Processor = stream_processor.Processor[_Item, _Result]
-_Ref = stream_processor.Ref[_Item, _Result]
-_Or = stream_processor.Or[_Item, _Result]
 _HeadRule = stream_processor.HeadRule[_Item, _Result]
 
 
