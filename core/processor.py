@@ -53,16 +53,27 @@ class Processor(Scope[_State, _Result], Rule[_State, _Result]):
 
 
 @dataclass(frozen=True)
+class NaryRule(Rule[_State, _Result]):
+    children: Sequence[Rule[_State, _Result]]
+
+
+@dataclass(frozen=True)
+class UnaryRule(Rule[_State, _Result]):
+    child: Rule[_State, _Result]
+
+
+class ResultCombiner(Generic[_Result]):
+    @abstractmethod
+    def combine_results(self, results: Sequence[_Result]) -> _Result:
+        ...
+
+
+@dataclass(frozen=True)
 class Ref(Rule[_State, _Result]):
     name: str
 
     def apply(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
         return scope[self.name].apply(scope, state)
-
-
-@dataclass(frozen=True)
-class NaryRule(Rule[_State, _Result]):
-    children: Sequence[Rule[_State, _Result]]
 
 
 class Or(NaryRule[_State, _Result]):
@@ -76,12 +87,6 @@ class Or(NaryRule[_State, _Result]):
         raise errors.Error(children=child_errors)
 
 
-class ResultCombiner(Generic[_Result]):
-    @abstractmethod
-    def combine_results(self, results: Sequence[_Result]) -> _Result:
-        ...
-
-
 class And(NaryRule[_State, _Result], ResultCombiner[_Result]):
     def apply(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
         results: MutableSequence[_Result] = []
@@ -92,4 +97,44 @@ class And(NaryRule[_State, _Result], ResultCombiner[_Result]):
                 raise error.as_child() from error
             state = child_state_and_result.state
             results.append(child_state_and_result.result)
+        return StateAndResult(state, self.combine_results(results))
+
+
+class ZeroOrMore(UnaryRule[_State, _Result], ResultCombiner[_Result]):
+    def apply(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+        results: MutableSequence[_Result] = []
+        while True:
+            try:
+                child_state_and_result = self.child.apply(scope, state)
+                state = child_state_and_result.state
+                results.append(child_state_and_result.result)
+            except errors.Error:
+                return StateAndResult(state, self.combine_results(results))
+
+
+class OneOrMore(UnaryRule[_State, _Result], ResultCombiner[_Result]):
+    def apply(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+        try:
+            child_state_and_result = self.child.apply(scope, state)
+        except errors.Error as error:
+            raise error.as_child() from error
+        state = child_state_and_result.state
+        results: MutableSequence[_Result] = [child_state_and_result.result]
+        while True:
+            try:
+                child_state_and_result = self.child.apply(scope, state)
+                state = child_state_and_result.state
+                results.append(child_state_and_result.result)
+            except errors.Error:
+                return StateAndResult(state, self.combine_results(results))
+
+
+class ZeroOrOne(UnaryRule[_State, _Result], ResultCombiner[_Result]):
+    def apply(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+        try:
+            child_state_and_result = self.child.apply(scope, state)
+            state = child_state_and_result.state
+            results = [child_state_and_result.result]
+        except errors.Error:
+            results = []
         return StateAndResult(state, self.combine_results(results))
