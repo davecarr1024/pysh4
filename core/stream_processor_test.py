@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Sequence, Tuple
 import unittest
 from . import errors, stream_processor
 
@@ -18,6 +19,15 @@ class _Eq(_HeadRule):
         if head != self.value:
             raise errors.Error(msg=f'head {head} != value {self.value}')
         return head
+
+
+class _ResultCombiner(stream_processor.ResultCombiner[_Result]):
+    def combine_results(self, results: Sequence[_Result]) -> _Result:
+        return sum(results)
+
+
+class _UntilEmpty(stream_processor.UntilEmpty[_Item, _Result], _ResultCombiner):
+    ...
 
 
 class StreamTest(unittest.TestCase):
@@ -55,3 +65,26 @@ class EqTest(unittest.TestCase):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
                     _Eq(1).apply(_Scope({}), state)
+
+
+class UntilEmptyTest(unittest.TestCase):
+    def test_apply(self):
+        for state, expected_output in list[Tuple[_Stream, _StateAndResult]]([
+            (_Stream([]), _StateAndResult(_Stream([]), 0)),
+            (_Stream([1]), _StateAndResult(_Stream([]), 1)),
+            (_Stream([1, 1]), _StateAndResult(_Stream([]), 2)),
+        ]):
+            with self.subTest(state=state, expected_output=expected_output):
+                self.assertEqual(
+                    _UntilEmpty(_Eq(1)).apply(_Scope({}), state),
+                    expected_output
+                )
+
+    def test_apply_fail(self):
+        for state in list[_Stream]([
+            _Stream([2]),
+            _Stream([1, 2]),
+        ]):
+            with self.subTest(state=state):
+                with self.assertRaises(errors.Error):
+                    _UntilEmpty(_Eq(1)).apply(_Scope({}), state)
