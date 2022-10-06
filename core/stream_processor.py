@@ -35,6 +35,9 @@ class Stream(Generic[_Item], Iterable[_Item], Sized):
         return Stream[_Item](self._items[1:])
 
 
+StateError = processor.StateError[Stream[_Item]]
+RuleError = processor.RuleError[Stream[_Item], _Result]
+RuleNameError = processor.RuleNameError
 StateAndResult = processor.StateAndResult[Stream[_Item], _Result]
 Rule = processor.Rule[Stream[_Item], _Result]
 Scope = processor.Scope[Stream[_Item], _Result]
@@ -68,7 +71,7 @@ class UntilEmpty(UnaryRule[_Item, _Result], ResultCombiner[_Result]):
             try:
                 child_state_and_result = self.child.apply(scope, state)
             except errors.Error as error:
-                raise error.as_child() from error
+                raise RuleError(rule=self, state=state, children=[error])
             state = child_state_and_result.state
             results.append(child_state_and_result.result)
         return StateAndResult[_Item, _Result](state, self.combine_results(results))
