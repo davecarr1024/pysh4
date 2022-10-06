@@ -61,9 +61,11 @@ class Ref(Rule[_State, _Result]):
 
 
 @dataclass(frozen=True)
-class Or(Rule[_State, _Result]):
+class NaryRule(Rule[_State, _Result]):
     children: Sequence[Rule[_State, _Result]]
 
+
+class Or(NaryRule[_State, _Result]):
     def apply(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
         child_errors: MutableSequence[errors.Error] = []
         for child in self.children:
@@ -72,3 +74,22 @@ class Or(Rule[_State, _Result]):
             except errors.Error as error:
                 child_errors.append(error)
         raise errors.Error(children=child_errors)
+
+
+class ResultCombiner(Generic[_Result]):
+    @abstractmethod
+    def combine_results(self, results: Sequence[_Result]) -> _Result:
+        ...
+
+
+class And(NaryRule[_State, _Result], ResultCombiner[_Result]):
+    def apply(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+        results: MutableSequence[_Result] = []
+        for child in self.children:
+            try:
+                child_state_and_result = child.apply(scope, state)
+            except errors.Error as error:
+                raise error.as_child() from error
+            state = child_state_and_result.state
+            results.append(child_state_and_result.result)
+        return StateAndResult(state, self.combine_results(results))

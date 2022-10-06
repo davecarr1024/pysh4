@@ -13,7 +13,16 @@ _Ref = processor.Ref[_State, _Result]
 _Or = processor.Or[_State, _Result]
 
 
-@dataclass(frozen=True)
+class _ResultCombiner(processor.ResultCombiner[_Result]):
+    def combine_results(self, results: Sequence[_Result]) -> _Result:
+        return sum(results)
+
+
+class _And(processor.And[_State, _Result], _ResultCombiner):
+    ...
+
+
+@ dataclass(frozen=True)
 class _Eq(_Rule):
     value: int
 
@@ -82,3 +91,15 @@ class OrTest(unittest.TestCase):
     def test_apply_fail(self):
         with self.assertRaises(errors.Error):
             _Or([_Eq(1), _Eq(2)]).apply(_Scope({}), [3])
+
+
+class AndTest(unittest.TestCase):
+    def test_apply(self):
+        self.assertEqual(
+            _And([_Eq(1), _Eq(2)]).apply(_Scope({}), [1, 2]),
+            _StateAndResult([], 3)
+        )
+
+    def test_apply_fail(self):
+        with self.assertRaises(errors.Error):
+            _And([_Eq(1), _Eq(2)]).apply(_Scope({}), [1, 3])

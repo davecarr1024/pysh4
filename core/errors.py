@@ -11,3 +11,6 @@ class Error(Exception):
 
     def with_rule_name(self, rule_name: str) -> 'Error':
         return Error(msg=self.msg, children=self.children, rule_name=rule_name)
+
+    def as_child(self) -> 'Error':
+        return Error(children=[self])
