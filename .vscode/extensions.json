@@ -1,5 +1,7 @@
 {
     "recommendations": [
-        "ms-python.vscode-pylance"
+        "ms-python.vscode-pylance",
+        "github.vscode-pull-request-github",
+        "ms-python.python"
     ]
 }
