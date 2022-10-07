@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Sequence
 from . import errors, stream_processor
 
 
@@ -22,6 +23,31 @@ _HeadRule = stream_processor.HeadRule[Char, str]
 
 @dataclass(frozen=True)
 class LexerRule(stream_processor.Processor[Char, str]):
+    ...
+
+
+class ResultCombiner(stream_processor.ResultCombiner[str]):
+    def combine_results(self, results: Sequence[str]) -> str:
+        return ''.join(results)
+
+
+class And(stream_processor.And[Char, str], ResultCombiner):
+    ...
+
+
+class ZeroOrMore(stream_processor.ZeroOrMore[Char, str], ResultCombiner):
+    ...
+
+
+class OneOrMore(stream_processor.OneOrMore[Char, str], ResultCombiner):
+    ...
+
+
+class ZeroOrOne(stream_processor.ZeroOrOne[Char, str], ResultCombiner):
+    ...
+
+
+class UntilEmpty(stream_processor.UntilEmpty[Char, str], ResultCombiner):
     ...
 
 
