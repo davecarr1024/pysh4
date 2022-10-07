@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Optional, Sequence, final
+from dataclasses import dataclass
+from typing import Optional, Sequence
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -14,4 +14,4 @@ class UnaryError(Error):
 
 @dataclass(frozen=True, kw_only=True)
 class NaryError(Error):
-    children: Error
+    children: Sequence[Error]

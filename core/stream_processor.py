@@ -71,7 +71,8 @@ class UntilEmpty(UnaryRule[_Item, _Result], ResultCombiner[_Result]):
             try:
                 child_state_and_result = self.child.apply(scope, state)
             except errors.Error as error:
-                raise RuleError(rule=self, state=state, children=[error])
+                raise RuleError[_Item, _Result](
+                    rule=self, state=state, children=[error]) from error
             state = child_state_and_result.state
             results.append(child_state_and_result.result)
         return StateAndResult[_Item, _Result](state, self.combine_results(results))

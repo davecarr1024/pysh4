@@ -22,7 +22,7 @@ _HeadRule = stream_processor.HeadRule[Char, str]
 
 
 @dataclass(frozen=True)
-class LexerRule(stream_processor.Processor[Char, str]):
+class Regex(stream_processor.Processor[Char, str]):
     ...
 
 

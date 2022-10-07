@@ -7,7 +7,6 @@ _State = TypeVar('_State')
 _Result = TypeVar('_Result')
 
 
-
 @dataclass(frozen=True)
 class StateAndResult(Generic[_State, _Result]):
     state: _State
@@ -19,6 +18,7 @@ class Rule(Generic[_State, _Result], ABC):
     def apply(self, scope: 'Scope[_State, _Result]', state: _State) -> StateAndResult[_State, _Result]:
         ...
 
+
 @dataclass(frozen=True, kw_only=True)
 class StateError(Generic[_State], errors.NaryError):
     state: _State
@@ -26,13 +26,12 @@ class StateError(Generic[_State], errors.NaryError):
 
 @dataclass(frozen=True, kw_only=True)
 class RuleError(Generic[_State, _Result], StateError[_State]):
-    rule: Rule[_State,_Result]
+    rule: Rule[_State, _Result]
 
 
 @dataclass(frozen=True, kw_only=True)
 class RuleNameError(errors.UnaryError):
     rule_name: str
-
 
 
 @dataclass(frozen=True)
@@ -94,7 +93,7 @@ class Ref(Rule[_State, _Result]):
 
 class Or(NaryRule[_State, _Result]):
     def apply(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
-        child_errors: MutableSequence[errors.Error] = []
+        child_errors: MutableSequence[errors.Error] = list[errors.Error]()
         for child in self.children:
             try:
                 return child.apply(scope, state)
