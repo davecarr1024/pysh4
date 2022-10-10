@@ -34,7 +34,7 @@ class _ZeroOrOne(processor.ZeroOrOne[_State, _Result], _ResultCombiner):
     ...
 
 
-@ dataclass(frozen=True)
+@dataclass(frozen=True)
 class _Eq(_Rule):
     value: int
 

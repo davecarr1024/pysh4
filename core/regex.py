@@ -57,6 +57,7 @@ class Regex(stream_processor.Processor[_Char, str]):
                     'char',
                     Not(Class(operators)),
                 ),
+                *[lexer.Regex(operator, Literal(operator)) for operator in operators]
             ])
         ).apply_str(input_str).result)
 
@@ -164,3 +165,12 @@ class Not(UnaryRule[_Char]):
             return StateAndResult[_Char](state.tail, state.head.value)
         raise RuleError[_Char](
             rule=self, state=state, msg='applied negated rule', children=[])
+
+
+@dataclass(frozen=True)
+class Any(_HeadRule[_Char]):
+    def __repr__(self) -> str:
+        return '.'
+
+    def result(self, head: _Char) -> str:
+        return head.value

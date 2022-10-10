@@ -11,6 +11,7 @@ _Class = regex.Class[_Char]
 _Range = regex.Range[_Char]
 _Regex = regex.Regex[_Char]
 _Not = regex.Not[_Char]
+_Any = regex.Any[_Char]
 
 
 class CharTest(unittest.TestCase):
@@ -180,6 +181,33 @@ class NotTest(unittest.TestCase):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
                     _Not(_Literal('a')).apply(_Scope({}), state)
+
+
+class AnyTest(unittest.TestCase):
+    def test_apply(self):
+        for state, expected_output in list[Tuple[_CharStream, _StateAndResult]]([
+            (
+                _CharStream([_Char('b')]),
+                _StateAndResult(_CharStream([]), 'b'),
+            ),
+            (
+                _CharStream([_Char('b'), _Char('a')]),
+                _StateAndResult(_CharStream([_Char('a')]), 'b'),
+            ),
+        ]):
+            with self.subTest(state=state, expected_output=expected_output):
+                self.assertEqual(
+                    _Any().apply(_Scope({}), state),
+                    expected_output
+                )
+
+    def test_apply_fail(self):
+        for state in list[_CharStream]([
+            _CharStream([]),
+        ]):
+            with self.subTest(state=state):
+                with self.assertRaises(errors.Error):
+                    _Any().apply(_Scope({}), state)
 
 
 class AndTest(unittest.TestCase):
