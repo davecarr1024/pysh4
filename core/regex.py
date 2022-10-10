@@ -37,7 +37,7 @@ class Regex(stream_processor.Processor[_Char, str]):
     def load(input_str: str) -> 'Regex[_Char]':
         from . import lexer, parser
 
-        operators = '()[]-+?*!^'
+        operators = '()[]-+?*!^.'
 
         _Rule = Rule[_Char]
         Or = parser.Or[_Rule]
@@ -48,8 +48,10 @@ class Regex(stream_processor.Processor[_Char, str]):
             {
                 'rule': Or([
                     Ref('literal'),
+                    Ref('any'),
                 ]),
-                'literal': TokenValueRule('char', lambda value: Literal(value))
+                'literal': TokenValueRule('char', lambda value: Literal(value)),
+                'any': TokenValueRule('.', lambda _: Any()),
             },
             'rule',
             lexer.Lexer([

@@ -440,6 +440,7 @@ class RegexTest(unittest.TestCase):
     def test_load(self):
         for input_str, regex_ in list[Tuple[str, _Regex]]([
             ('a', regex.Regex(regex.Literal('a'))),
+            ('.', regex.Regex(regex.Any())),
         ]):
             with self.subTest(input_str=input_str, regex_=regex_):
                 self.assertEqual(
