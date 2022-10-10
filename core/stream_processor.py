@@ -63,9 +63,13 @@ class HeadRule(Rule[_Item, _Result], ABC):
     def result(self, head: _Item) -> _Result:
         ...
 
+    def validate(self, head: _Item) -> None:
+        ...
+
     def apply(self, scope: Scope[_Item, _Result], state: Stream[_Item]) -> StateAndResult[_Item, _Result]:
         if state.empty:
             raise errors.Error(msg='empty stream')
+        self.validate(state.head)
         return StateAndResult[_Item, _Result](state.tail, self.result(state.head))
 
 

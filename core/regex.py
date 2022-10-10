@@ -15,18 +15,50 @@ class Char:
 
 _Char = TypeVar('_Char', bound=Char)
 
+RuleError = stream_processor.RuleError[_Char, str]
 CharStream = stream_processor.Stream[_Char]
 StateAndResult = stream_processor.StateAndResult[_Char, str]
 Rule = stream_processor.Rule[_Char, str]
 Scope = stream_processor.Scope[_Char, str]
 Ref = stream_processor.Ref[_Char, str]
 Or = stream_processor.Or[_Char, str]
+UnaryRule = stream_processor.UnaryRule[_Char, str]
 _HeadRule = stream_processor.HeadRule[_Char, str]
 
+_ROOT_RULE_NAME = '_root'
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, init=False)
 class Regex(stream_processor.Processor[_Char, str]):
-    ...
+    def __init__(self, rule: Rule[_Char]):
+        super().__init__({_ROOT_RULE_NAME: rule}, _ROOT_RULE_NAME)
+
+    @staticmethod
+    def load(input_str: str) -> 'Regex[_Char]':
+        from . import lexer, parser
+
+        operators = '()[]-+?*!^'
+
+        _Rule = Rule[_Char]
+        Or = parser.Or[_Rule]
+        Ref = parser.Ref[_Rule]
+        TokenValueRule = parser.TokenValueRule[_Rule]
+
+        return Regex(parser.Parser[Rule[_Char]](
+            {
+                'rule': Or([
+                    Ref('literal'),
+                ]),
+                'literal': TokenValueRule('char', lambda value: Literal(value))
+            },
+            'rule',
+            lexer.Lexer([
+                lexer.Regex(
+                    'char',
+                    Not(Class(operators)),
+                ),
+            ])
+        ).apply_str(input_str).result)
 
 
 class ResultCombiner(stream_processor.ResultCombiner[str]):
@@ -115,3 +147,20 @@ class Range(_HeadRule[_Char]):
         if head.value < self.min or head.value > self.max:
             raise errors.Error(msg=f'head {head} not in range {self}')
         return head.value
+
+
+@dataclass(frozen=True)
+class Not(UnaryRule[_Char]):
+    def __repr__(self) -> str:
+        return f'^{self.child}'
+
+    def apply(self, scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
+        if state.empty:
+            raise RuleError[_Char](
+                rule=self, state=state, msg='empty stream', children=[])
+        try:
+            self.child.apply(scope, state)
+        except errors.Error:
+            return StateAndResult[_Char](state.tail, state.head.value)
+        raise RuleError[_Char](
+            rule=self, state=state, msg='applied negated rule', children=[])
