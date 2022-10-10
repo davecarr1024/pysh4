@@ -49,6 +49,12 @@ class StreamTest(unittest.TestCase):
         with self.assertRaises(errors.Error):
             _ = _Stream([]).tail
 
+    def test_add(self):
+        self.assertEqual(
+            _Stream([1]) + _Stream([2]),
+            _Stream([1, 2])
+        )
+
 
 class EqTest(unittest.TestCase):
     def test_apply(self):

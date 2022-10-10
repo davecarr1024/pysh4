@@ -1,6 +1,14 @@
-from typing import Tuple
+from typing import Sequence, Tuple
 import unittest
 from . import errors, regex
+
+_Char = regex.Char
+_CharStream = regex.CharStream[_Char]
+_StateAndResult = regex.StateAndResult[_Char]
+_Scope = regex.Scope[_Char]
+_Literal = regex.Literal[_Char]
+_Class = regex.Class[_Char]
+_Range = regex.Range[_Char]
 
 
 class CharTest(unittest.TestCase):
@@ -18,19 +26,28 @@ class CharTest(unittest.TestCase):
 
 
 class LiteralTest(unittest.TestCase):
+    def test_ctor_fail(self):
+        for value in list[str]([
+            '',
+            'aa',
+        ]):
+            with self.subTest(value=value):
+                with self.assertRaises(errors.Error):
+                    _Literal(value)
+
     def test_apply(self):
-        for state, expected_output in list[Tuple[regex.CharStream, regex.StateAndResult]]([
+        for state, expected_output in list[Tuple[_CharStream, _StateAndResult]]([
             (
-                regex.CharStream([regex.Char('a')]),
-                regex.StateAndResult(regex.CharStream([]), 'a'),
+                _CharStream([regex.Char('a')]),
+                _StateAndResult(_CharStream([]), 'a'),
             ),
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('a'),
                     regex.Char('b'),
                 ]),
-                regex.StateAndResult(
-                    regex.CharStream([
+                _StateAndResult(
+                    _CharStream([
                         regex.Char('b'),
                     ]),
                     'a'
@@ -39,40 +56,120 @@ class LiteralTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, expected_output=expected_output):
                 self.assertEqual(
-                    regex.Literal(regex.Char('a')).apply(
-                        regex.Scope({}), state),
+                    _Literal('a').apply(
+                        _Scope({}), state),
                     expected_output
                 )
 
     def test_apply_fail(self):
-        for state in list[regex.CharStream]([
-            regex.CharStream([]),
-            regex.CharStream([regex.Char('b')]),
+        for state in list[_CharStream]([
+            _CharStream([]),
+            _CharStream([regex.Char('b')]),
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    regex.Literal(regex.Char('a')).apply(
-                        regex.Scope({}), state)
+                    _Literal('a').apply(
+                        _Scope({}), state)
+
+
+class ClassTest(unittest.TestCase):
+    def test_ctor_fail(self):
+        for values in list[Sequence[str]]([
+            [],
+            ['aa'],
+            ['a', 'bb'],
+        ]):
+            with self.subTest(values=values):
+                with self.assertRaises(errors.Error):
+                    regex.Class(values)
+
+    def test_apply(self):
+        for state, expected_output in list[Tuple[_CharStream, _StateAndResult]]([
+            (
+                _CharStream([_Char('a')]),
+                _StateAndResult(_CharStream([]), 'a'),
+            ),
+            (
+                _CharStream([_Char('b')]),
+                _StateAndResult(_CharStream([]), 'b'),
+            ),
+        ]):
+            with self.subTest(state=state, expected_output=expected_output):
+                self.assertEqual(
+                    _Class(['a', 'b']).apply(_Scope({}), state),
+                    expected_output
+                )
+
+    def test_apply_fail(self):
+        for state in list[_CharStream]([
+            _CharStream([]),
+            _CharStream([_Char('c')]),
+        ]):
+            with self.subTest(state=state):
+                with self.assertRaises(errors.Error):
+                    _Class(['a', 'b']).apply(_Scope({}), state)
+
+
+class RangeTest(unittest.TestCase):
+    def test_ctor_fail(self):
+        for min, max in list[Tuple[str, str]]([
+            ('aa', 'b'),
+            ('a', 'bb'),
+            ('b', 'a'),
+        ]):
+            with self.subTest(min=min, max=max):
+                with self.assertRaises(errors.Error):
+                    regex.Range(min, max)
+
+    def test_apply(self):
+        for state, expected_output in list[Tuple[_CharStream, _StateAndResult]]([
+            (
+                _CharStream([_Char('a')]),
+                _StateAndResult(_CharStream([]), 'a'),
+            ),
+            (
+                _CharStream([_Char('b')]),
+                _StateAndResult(_CharStream([]), 'b'),
+            ),
+            (
+                _CharStream([_Char('c')]),
+                _StateAndResult(_CharStream([]), 'c'),
+            ),
+        ]):
+            with self.subTest(state=state, expected_output=expected_output):
+                self.assertEqual(
+                    _Range('a', 'c').apply(_Scope({}), state),
+                    expected_output
+                )
+
+    def test_apply_fail(self):
+        for state in list[_CharStream]([
+            _CharStream([]),
+            _CharStream([_Char('d')]),
+        ]):
+            with self.subTest(state=state):
+                with self.assertRaises(errors.Error):
+                    _Range('a', 'c').apply(_Scope({}), state)
 
 
 class AndTest(unittest.TestCase):
     def test_apply(self):
-        for state, expected_output in list[Tuple[regex.CharStream, regex.StateAndResult]]([
+        for state, expected_output in list[Tuple[_CharStream, _StateAndResult]]([
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('a'),
                     regex.Char('b'),
                 ]),
-                regex.StateAndResult(regex.CharStream([]), 'ab'),
+                _StateAndResult(_CharStream([]), 'ab'),
             ),
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('a'),
                     regex.Char('b'),
                     regex.Char('c'),
                 ]),
-                regex.StateAndResult(
-                    regex.CharStream([
+                _StateAndResult(
+                    _CharStream([
                         regex.Char('c'),
                     ]),
                     'ab'
@@ -82,17 +179,17 @@ class AndTest(unittest.TestCase):
             with self.subTest(state=state, expected_output=expected_output):
                 self.assertEqual(
                     regex.And([
-                        regex.Literal(regex.Char('a')),
-                        regex.Literal(regex.Char('b')),
-                    ]).apply(regex.Scope({}), state),
+                        _Literal('a'),
+                        _Literal('b'),
+                    ]).apply(_Scope({}), state),
                     expected_output
                 )
 
     def test_apply_fail(self):
-        for state in list[regex.CharStream]([
-            regex.CharStream([]),
-            regex.CharStream([regex.Char('b')]),
-            regex.CharStream([
+        for state in list[_CharStream]([
+            _CharStream([]),
+            _CharStream([regex.Char('b')]),
+            _CharStream([
                 regex.Char('a'),
                 regex.Char('c'),
             ]),
@@ -100,176 +197,176 @@ class AndTest(unittest.TestCase):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
                     regex.And([
-                        regex.Literal(regex.Char('a')),
-                        regex.Literal(regex.Char('b')),
-                    ]).apply(regex.Scope({}), state)
+                        _Literal('a'),
+                        _Literal('b'),
+                    ]).apply(_Scope({}), state)
 
 
 class ZeroOrMoreTest(unittest.TestCase):
     def test_apply(self):
-        for state, expected_output in list[Tuple[regex.CharStream, regex.StateAndResult]]([
+        for state, expected_output in list[Tuple[_CharStream, _StateAndResult]]([
             (
-                regex.CharStream([]),
-                regex.StateAndResult(regex.CharStream([]), ''),
+                _CharStream([]),
+                _StateAndResult(_CharStream([]), ''),
             ),
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('a'),
                 ]),
-                regex.StateAndResult(regex.CharStream([]), 'a'),
+                _StateAndResult(_CharStream([]), 'a'),
             ),
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('a'),
                     regex.Char('a'),
                 ]),
-                regex.StateAndResult(regex.CharStream([]), 'aa'),
+                _StateAndResult(_CharStream([]), 'aa'),
             ),
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('b'),
                 ]),
-                regex.StateAndResult(regex.CharStream([regex.Char('b')]), ''),
+                _StateAndResult(_CharStream([regex.Char('b')]), ''),
             ),
             (
-                regex.CharStream([
-                    regex.Char('a'),
-                    regex.Char('b'),
-                ]),
-                regex.StateAndResult(regex.CharStream([regex.Char('b')]), 'a'),
-            ),
-            (
-                regex.CharStream([
-                    regex.Char('a'),
+                _CharStream([
                     regex.Char('a'),
                     regex.Char('b'),
                 ]),
-                regex.StateAndResult(
-                    regex.CharStream([regex.Char('b')]), 'aa'),
+                _StateAndResult(_CharStream([regex.Char('b')]), 'a'),
+            ),
+            (
+                _CharStream([
+                    regex.Char('a'),
+                    regex.Char('a'),
+                    regex.Char('b'),
+                ]),
+                _StateAndResult(
+                    _CharStream([regex.Char('b')]), 'aa'),
             ),
         ]):
             with self.subTest(state=state, expected_output=expected_output):
                 self.assertEqual(
                     regex.ZeroOrMore(
-                        regex.Literal(regex.Char('a')),
-                    ).apply(regex.Scope({}), state),
+                        _Literal('a'),
+                    ).apply(_Scope({}), state),
                     expected_output
                 )
 
 
 class OneOrMoreTest(unittest.TestCase):
     def test_apply(self):
-        for state, expected_output in list[Tuple[regex.CharStream, regex.StateAndResult]]([
+        for state, expected_output in list[Tuple[_CharStream, _StateAndResult]]([
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('a'),
                     regex.Char('a'),
                 ]),
-                regex.StateAndResult(regex.CharStream([]), 'aa'),
+                _StateAndResult(_CharStream([]), 'aa'),
             ),
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('a'),
                     regex.Char('b'),
                 ]),
-                regex.StateAndResult(regex.CharStream([regex.Char('b')]), 'a'),
+                _StateAndResult(_CharStream([regex.Char('b')]), 'a'),
             ),
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('a'),
                     regex.Char('a'),
                     regex.Char('b'),
                 ]),
-                regex.StateAndResult(
-                    regex.CharStream([regex.Char('b')]), 'aa'),
+                _StateAndResult(
+                    _CharStream([regex.Char('b')]), 'aa'),
             ),
         ]):
             with self.subTest(state=state, expected_output=expected_output):
                 self.assertEqual(
                     regex.OneOrMore(
-                        regex.Literal(regex.Char('a')),
-                    ).apply(regex.Scope({}), state),
+                        _Literal('a'),
+                    ).apply(_Scope({}), state),
                     expected_output
                 )
 
     def test_apply_fail(self):
-        for state in list[regex.CharStream]([
-            regex.CharStream([]),
-            regex.CharStream([regex.Char('b')]),
+        for state in list[_CharStream]([
+            _CharStream([]),
+            _CharStream([regex.Char('b')]),
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
                     regex.OneOrMore(
-                        regex.Literal(regex.Char('a'))
-                    ).apply(regex.Scope({}), state)
+                        _Literal('a')
+                    ).apply(_Scope({}), state)
 
 
 class ZeroOrOneTest(unittest.TestCase):
     def test_apply(self):
-        for state, expected_output in list[Tuple[regex.CharStream, regex.StateAndResult]]([
+        for state, expected_output in list[Tuple[_CharStream, _StateAndResult]]([
             (
-                regex.CharStream([]),
-                regex.StateAndResult(regex.CharStream([]), ''),
+                _CharStream([]),
+                _StateAndResult(_CharStream([]), ''),
             ),
             (
-                regex.CharStream([regex.Char('a')]),
-                regex.StateAndResult(regex.CharStream([]), 'a'),
+                _CharStream([regex.Char('a')]),
+                _StateAndResult(_CharStream([]), 'a'),
             ),
             (
-                regex.CharStream([regex.Char('b')]),
-                regex.StateAndResult(regex.CharStream([regex.Char('b')]), ''),
+                _CharStream([regex.Char('b')]),
+                _StateAndResult(_CharStream([regex.Char('b')]), ''),
             ),
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('a'),
                     regex.Char('b'),
                 ]),
-                regex.StateAndResult(regex.CharStream([regex.Char('b')]), 'a'),
+                _StateAndResult(_CharStream([regex.Char('b')]), 'a'),
             ),
         ]):
             with self.subTest(state=state, expected_output=expected_output):
                 self.assertEqual(
                     regex.ZeroOrOne(
-                        regex.Literal(regex.Char('a'))
-                    ).apply(regex.Scope({}), state),
+                        _Literal('a')
+                    ).apply(_Scope({}), state),
                     expected_output
                 )
 
 
 class UntilEmptyTest(unittest.TestCase):
     def test_apply(self):
-        for state, expected_output in list[Tuple[regex.CharStream, regex.StateAndResult]]([
+        for state, expected_output in list[Tuple[_CharStream, _StateAndResult]]([
             (
-                regex.CharStream([
+                _CharStream([
                 ]),
-                regex.StateAndResult(regex.CharStream([]), ''),
+                _StateAndResult(_CharStream([]), ''),
             ),
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('a'),
                 ]),
-                regex.StateAndResult(regex.CharStream([]), 'a'),
+                _StateAndResult(_CharStream([]), 'a'),
             ),
             (
-                regex.CharStream([
+                _CharStream([
                     regex.Char('a'),
                     regex.Char('a'),
                 ]),
-                regex.StateAndResult(regex.CharStream([]), 'aa'),
+                _StateAndResult(_CharStream([]), 'aa'),
             ),
         ]):
             with self.subTest(state=state, expected_output=expected_output):
                 self.assertEqual(
                     regex.UntilEmpty(
-                        regex.Literal(regex.Char('a')),
-                    ).apply(regex.Scope({}), state),
+                        _Literal('a'),
+                    ).apply(_Scope({}), state),
                     expected_output
                 )
 
     def test_apply_fail(self):
-        for state in list[regex.CharStream]([
-            regex.CharStream([regex.Char('b')]),
-            regex.CharStream([
+        for state in list[_CharStream]([
+            _CharStream([regex.Char('b')]),
+            _CharStream([
                 regex.Char('a'),
                 regex.Char('b'),
             ]),
@@ -277,5 +374,5 @@ class UntilEmptyTest(unittest.TestCase):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
                     regex.UntilEmpty(
-                        regex.Literal(regex.Char('a'))
-                    ).apply(regex.Scope({}), state)
+                        _Literal('a')
+                    ).apply(_Scope({}), state)

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, Iterator, Mapping, MutableSequence, Sequence, TypeVar
+from typing import Any, Generic, Iterator, Mapping, MutableSequence, Optional, Sequence, TypeVar
 from . import errors
 
 _State = TypeVar('_State')
@@ -23,15 +23,24 @@ class Rule(Generic[_State, _Result], ABC):
 class StateError(Generic[_State], errors.NaryError):
     state: _State
 
+    def _repr_args(self) -> Mapping[str, Optional[Any]]:
+        return super()._repr_args() | dict(state=self.state)
+
 
 @dataclass(frozen=True, kw_only=True)
 class RuleError(Generic[_State, _Result], StateError[_State]):
     rule: Rule[_State, _Result]
 
+    def _repr_args(self) -> Mapping[str, Optional[Any]]:
+        return super()._repr_args() | dict(rule=self.rule)
+
 
 @dataclass(frozen=True, kw_only=True)
 class RuleNameError(errors.UnaryError):
     rule_name: str
+
+    def _repr_args(self) -> Mapping[str, Optional[Any]]:
+        return super()._repr_args() | dict(rule_name=self.rule_name)
 
 
 @dataclass(frozen=True)
