@@ -195,6 +195,8 @@ def load(input_str: str) -> 'Rule[_Char]':
         type: Type[NaryRule[_Char]]
 
         def combine_results(self, results: Sequence[_Rule]) -> _Rule:
+            if len(results) == 1:
+                return results[0]
             return self.type(results)
 
     return parser.Parser[Rule[_Char]](

@@ -439,11 +439,11 @@ class UntilEmptyTest(unittest.TestCase):
 class RegexTest(unittest.TestCase):
     def test_load(self):
         for input_str, rule in list[Tuple[str, _Rule]]([
-            # ('a', regex.Literal('a')),
-            # ('.', regex.Any()),
-            # ('[a-z]', regex.Range('a', 'z')),
-            # (r'\w', _Class.whitespace()),
-            # (r'\\', regex.Literal('\\')),
+            ('a', regex.Literal('a')),
+            ('.', regex.Any()),
+            ('[a-z]', regex.Range('a', 'z')),
+            (r'\w', _Class.whitespace()),
+            (r'\\', regex.Literal('\\')),
             ('abc', regex.And([
                 regex.Literal('a'),
                 regex.Literal('b'),
