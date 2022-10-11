@@ -191,7 +191,7 @@ def load(input_str: str) -> 'Rule[_Char]':
                 rule=self, state=state, msg=f'invalid special value {repr(value)}', children=[])
 
     @dataclass(frozen=True)
-    class RootLoader(parser.UntilEmpty[_Rule]):
+    class ResultCombiner(parser.ResultCombiner[_Rule]):
         type: Type[NaryRule[_Char]]
 
         def combine_results(self, results: Sequence[_Rule]) -> _Rule:
@@ -199,9 +199,15 @@ def load(input_str: str) -> 'Rule[_Char]':
                 return results[0]
             return self.type(results)
 
+    _ResultCombiner = ResultCombiner[_Char]
+
+    @dataclass(frozen=True)
+    class UntilEmpty(parser.UntilEmpty[_Rule], _ResultCombiner):
+        ...
+
     return parser.Parser[Rule[_Char]](
         {
-            'root': RootLoader(Ref('rule'), And),
+            'root': UntilEmpty(And, Ref('rule')),
             'rule': Or([
                 Ref('operation'),
                 Ref('operand'),
