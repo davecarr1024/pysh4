@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import string
-from typing import Collection, Mapping, Sequence, Tuple, TypeVar
+from typing import Collection, Mapping, Sequence, Tuple, Type, TypeVar
 from . import errors, stream_processor
 
 
@@ -190,8 +190,16 @@ def load(input_str: str) -> 'Rule[_Char]':
             raise parser.RuleError[_Rule](
                 rule=self, state=state, msg=f'invalid special value {repr(value)}', children=[])
 
+    @dataclass(frozen=True)
+    class RootLoader(parser.UntilEmpty[_Rule]):
+        type: Type[NaryRule[_Char]]
+
+        def combine_results(self, results: Sequence[_Rule]) -> _Rule:
+            return self.type(results)
+
     return parser.Parser[Rule[_Char]](
         {
+            'root': RootLoader(Ref('rule'), And),
             'rule': Or([
                 Ref('operation'),
                 Ref('operand'),
@@ -207,7 +215,7 @@ def load(input_str: str) -> 'Rule[_Char]':
             'range': RangeLoader(),
             'special': SpecialLoader(),
         },
-        'rule',
+        'root',
         lexer.Lexer([
             lexer.Regex(
                 'char',

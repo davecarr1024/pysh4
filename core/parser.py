@@ -41,8 +41,7 @@ class Parser(stream_processor.Processor[lexer.Token, _Result]):
     lexer_: lexer.Lexer
 
     def apply_str(self, input_str: str) -> StateAndResult[_Result]:
-        return self.apply_state(
-            self.lexer_.apply_state(
-                lexer.load_char_stream(input_str)
-            ).result
-        )
+        lexer_result = self.lexer_.apply_state(
+            lexer.load_char_stream(input_str)
+        ).result
+        return self.apply_state(lexer_result)
