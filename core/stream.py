@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Generic, Iterable, Iterator, MutableSequence, Sequence, Sized, TypeVar
+
 from . import errors, processor
 
 _Item = TypeVar('_Item', covariant=True)
@@ -7,7 +8,7 @@ _Item = TypeVar('_Item', covariant=True)
 
 @dataclass(frozen=True)
 class Stream(Generic[_Item], Iterable[_Item], Sized):
-    _items: Sequence[_Item]
+    _items: Sequence[_Item] = field(default_factory=list[_Item])
 
     def __len__(self) -> int:
         return len(self._items)
