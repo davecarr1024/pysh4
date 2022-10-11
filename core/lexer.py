@@ -31,11 +31,14 @@ def load_char_stream(input_str: str) -> CharStream:
     return CharStream(chars)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Token:
     rule_name: str
     value: str
     position: Position
+
+    def __repr__(self) -> str:
+        return f'{self.rule_name}({self.value})'
 
 
 TokenStream = stream_processor.Stream[Token]

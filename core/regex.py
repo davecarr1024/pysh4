@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import string
-from typing import Collection, Sequence, TypeVar
+from typing import Collection, Sequence, Tuple, TypeVar
 from . import errors, stream_processor
 
 
@@ -23,6 +23,7 @@ Scope = stream_processor.Scope[_Char, str]
 Ref = stream_processor.Ref[_Char, str]
 Or = stream_processor.Or[_Char, str]
 UnaryRule = stream_processor.UnaryRule[_Char, str]
+NaryRule = stream_processor.NaryRule[_Char, str]
 _HeadRule = stream_processor.HeadRule[_Char, str]
 
 _ROOT_RULE_NAME = '_root'
@@ -44,14 +45,37 @@ class Regex(stream_processor.Processor[_Char, str]):
         Ref = parser.Ref[_Rule]
         TokenValueRule = parser.TokenValueRule[_Rule]
 
+        def consume_token(state: lexer.TokenStream, rule_name: str) -> lexer.TokenStream:
+            state, _ = token_value(state, rule_name)
+            return state
+
+        def token_value(state: lexer.TokenStream, rule_name: str) -> Tuple[lexer.TokenStream, str]:
+            if state.empty:
+                raise errors.Error(msg=f'empty stream')
+            if state.head.rule_name != rule_name:
+                raise errors.Error(
+                    msg=f'expected rule_name {rule_name} got {state.head.rule_name}')
+            return state.tail, state.head.value
+
+        class RangeLoader(parser.Rule[_Rule]):
+            def apply(self, scope: parser.Scope[_Rule], state: lexer.TokenStream) -> parser.StateAndResult[_Rule]:
+                state = consume_token(state, '[')
+                state, min = token_value(state, 'char')
+                state = consume_token(state, '-')
+                state, max = token_value(state, 'char')
+                state = consume_token(state, ']')
+                return parser.StateAndResult[_Rule](state, Range(min, max))
+
         return Regex(parser.Parser[Rule[_Char]](
             {
                 'rule': Or([
                     Ref('literal'),
                     Ref('any'),
+                    Ref('range'),
                 ]),
                 'literal': TokenValueRule('char', lambda value: Literal(value)),
                 'any': TokenValueRule('.', lambda _: Any()),
+                'range': RangeLoader(),
             },
             'rule',
             lexer.Lexer([

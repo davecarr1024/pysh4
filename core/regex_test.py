@@ -441,6 +441,7 @@ class RegexTest(unittest.TestCase):
         for input_str, regex_ in list[Tuple[str, _Regex]]([
             ('a', regex.Regex(regex.Literal('a'))),
             ('.', regex.Regex(regex.Any())),
+            ('[a-z]', regex.Regex(regex.Range('a', 'z'))),
         ]):
             with self.subTest(input_str=input_str, regex_=regex_):
                 self.assertEqual(
