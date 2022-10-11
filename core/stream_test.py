@@ -107,6 +107,34 @@ def eq(value: int) -> _Rule:
     return stream.head_rule(result)
 
 
+class EqTest(unittest.TestCase):
+    def test_apply(self):
+        for state, output in list[Tuple[_State, _StateAndResult]]([
+            (
+                _Stream([1]),
+                (_Stream([]), 1),
+            ),
+            (
+                _Stream([1, 2]),
+                (_Stream([2]), 1),
+            ),
+        ]):
+            with self.subTest(state=state, output=output):
+                self.assertEqual(
+                    eq(1)(_Scope(), state),
+                    output
+                )
+
+    def test_apply_fail(self):
+        for state in list[_State]([
+            _Stream([]),
+            _Stream([2]),
+        ]):
+            with self.subTest(state=state):
+                with self.assertRaises(errors.Error):
+                    eq(1)(_Scope(), state)
+
+
 result_combiner: processor.ResultCombiner[_Result] = sum
 
 
