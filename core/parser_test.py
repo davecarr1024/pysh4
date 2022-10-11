@@ -192,3 +192,17 @@ class _Call(_Expr):
         operands: Sequence[_Val] = [operand.eval(
             scope) for operand in self.operands]
         return operator.apply(scope, operands)
+
+
+class CallTest(unittest.TestCase):
+    def test_eval(self):
+        self.assertEqual(
+            _Call(
+                _Literal(_IntFunc.operators()['+']),
+                [
+                    _Ref('a'),
+                    _Ref('b'),
+                ]
+            ).eval(_Scope({'a': _Int(1), 'b': _Int(2)})),
+            _Int(3)
+        )
