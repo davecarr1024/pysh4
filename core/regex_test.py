@@ -6,10 +6,10 @@ _Char = regex.Char
 _CharStream = regex.CharStream[_Char]
 _StateAndResult = regex.StateAndResult[_Char]
 _Scope = regex.Scope[_Char]
+_Rule = regex.Rule[_Char]
 _Literal = regex.Literal[_Char]
 _Class = regex.Class[_Char]
 _Range = regex.Range[_Char]
-_Regex = regex.Regex[_Char]
 _Not = regex.Not[_Char]
 _Any = regex.Any[_Char]
 
@@ -438,13 +438,15 @@ class UntilEmptyTest(unittest.TestCase):
 
 class RegexTest(unittest.TestCase):
     def test_load(self):
-        for input_str, regex_ in list[Tuple[str, _Regex]]([
-            ('a', regex.Regex(regex.Literal('a'))),
-            ('.', regex.Regex(regex.Any())),
-            ('[a-z]', regex.Regex(regex.Range('a', 'z'))),
+        for input_str, rule in list[Tuple[str, _Rule]]([
+            ('a', regex.Literal('a')),
+            ('.', regex.Any()),
+            ('[a-z]', regex.Range('a', 'z')),
+            (r'\w', _Class.whitespace()),
+            (r'\\', regex.Literal('\\')),
         ]):
-            with self.subTest(input_str=input_str, regex_=regex_):
+            with self.subTest(input_str=input_str, regex_=rule):
                 self.assertEqual(
-                    regex.Regex.load(input_str),
-                    regex_
+                    regex.load(input_str),
+                    rule
                 )

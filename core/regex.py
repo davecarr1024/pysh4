@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import string
-from typing import Collection, Sequence, Tuple, TypeVar
+from typing import Collection, Mapping, Sequence, Tuple, TypeVar
 from . import errors, stream_processor
 
 
@@ -27,65 +27,6 @@ NaryRule = stream_processor.NaryRule[_Char, str]
 _HeadRule = stream_processor.HeadRule[_Char, str]
 
 _ROOT_RULE_NAME = '_root'
-
-
-@dataclass(frozen=True, init=False)
-class Regex(stream_processor.Processor[_Char, str]):
-    def __init__(self, rule: Rule[_Char]):
-        super().__init__({_ROOT_RULE_NAME: rule}, _ROOT_RULE_NAME)
-
-    @staticmethod
-    def load(input_str: str) -> 'Regex[_Char]':
-        from . import lexer, parser
-
-        operators = '()[]-+?*!^.'
-
-        _Rule = Rule[_Char]
-        Or = parser.Or[_Rule]
-        Ref = parser.Ref[_Rule]
-        TokenValueRule = parser.TokenValueRule[_Rule]
-
-        def consume_token(state: lexer.TokenStream, rule_name: str) -> lexer.TokenStream:
-            state, _ = token_value(state, rule_name)
-            return state
-
-        def token_value(state: lexer.TokenStream, rule_name: str) -> Tuple[lexer.TokenStream, str]:
-            if state.empty:
-                raise errors.Error(msg=f'empty stream')
-            if state.head.rule_name != rule_name:
-                raise errors.Error(
-                    msg=f'expected rule_name {rule_name} got {state.head.rule_name}')
-            return state.tail, state.head.value
-
-        class RangeLoader(parser.Rule[_Rule]):
-            def apply(self, scope: parser.Scope[_Rule], state: lexer.TokenStream) -> parser.StateAndResult[_Rule]:
-                state = consume_token(state, '[')
-                state, min = token_value(state, 'char')
-                state = consume_token(state, '-')
-                state, max = token_value(state, 'char')
-                state = consume_token(state, ']')
-                return parser.StateAndResult[_Rule](state, Range(min, max))
-
-        return Regex(parser.Parser[Rule[_Char]](
-            {
-                'rule': Or([
-                    Ref('literal'),
-                    Ref('any'),
-                    Ref('range'),
-                ]),
-                'literal': TokenValueRule('char', lambda value: Literal(value)),
-                'any': TokenValueRule('.', lambda _: Any()),
-                'range': RangeLoader(),
-            },
-            'rule',
-            lexer.Lexer([
-                lexer.Regex(
-                    'char',
-                    Not(Class(operators)),
-                ),
-                *[lexer.Regex(operator, Literal(operator)) for operator in operators]
-            ])
-        ).apply_str(input_str).result)
 
 
 class ResultCombiner(stream_processor.ResultCombiner[str]):
@@ -153,6 +94,10 @@ class Class(_HeadRule[_Char]):
     def whitespace() -> 'Class[_Char]':
         return Class[_Char](string.whitespace)
 
+    @staticmethod
+    def classes() -> Mapping[str, 'Class[_Char]']:
+        return {'w': Class.whitespace()}
+
 
 @dataclass(frozen=True)
 class Range(_HeadRule[_Char]):
@@ -200,3 +145,74 @@ class Any(_HeadRule[_Char]):
 
     def result(self, head: _Char) -> str:
         return head.value
+
+
+def load(input_str: str) -> 'Rule[_Char]':
+    from . import lexer, parser
+
+    operators = '()[]-+?*!^.\\'
+
+    _Rule = Rule[_Char]
+    Or = parser.Or[_Rule]
+    Ref = parser.Ref[_Rule]
+    TokenValueRule = parser.TokenValueRule[_Rule]
+
+    def consume_token(state: lexer.TokenStream, rule_name: str) -> lexer.TokenStream:
+        state, _ = token_value(state, rule_name)
+        return state
+
+    def token_value(state: lexer.TokenStream, rule_name: str) -> Tuple[lexer.TokenStream, str]:
+        if state.empty:
+            raise parser.StateError(
+                state=state, children=[], msg=f'empty stream')
+        if state.head.rule_name != rule_name:
+            raise parser.StateError(state=state, children=[],
+                                    msg=f'expected rule_name {rule_name} got {state.head.rule_name}')
+        return state.tail, state.head.value
+
+    class RangeLoader(parser.Rule[_Rule]):
+        def apply(self, scope: parser.Scope[_Rule], state: lexer.TokenStream) -> parser.StateAndResult[_Rule]:
+            state = consume_token(state, '[')
+            state, min = token_value(state, 'char')
+            state = consume_token(state, '-')
+            state, max = token_value(state, 'char')
+            state = consume_token(state, ']')
+            return parser.StateAndResult[_Rule](state, Range(min, max))
+
+    class SpecialLoader(parser.Rule[_Rule]):
+        def apply(self, scope: parser.Scope[_Rule], state: lexer.TokenStream) -> parser.StateAndResult[_Rule]:
+            state = consume_token(state, '\\')
+            value = state.head.value
+            if value in Class.classes():
+                return parser.StateAndResult[_Rule](state.tail, Class[_Char].classes()[value])
+            if value in operators:
+                return parser.StateAndResult[_Rule](state.tail, Literal[_Char](value))
+            raise parser.RuleError[_Rule](
+                rule=self, state=state, msg=f'invalid special value {repr(value)}', children=[])
+
+    return parser.Parser[Rule[_Char]](
+        {
+            'rule': Or([
+                Ref('operation'),
+                Ref('operand'),
+            ]),
+            'operand': Or([
+                Ref('literal'),
+                Ref('any'),
+                Ref('range'),
+                Ref('special'),
+            ]),
+            'literal': TokenValueRule('char', lambda value: Literal(value)),
+            'any': TokenValueRule('.', lambda _: Any()),
+            'range': RangeLoader(),
+            'special': SpecialLoader(),
+        },
+        'rule',
+        lexer.Lexer([
+            lexer.Regex(
+                'char',
+                Not(Class(operators)),
+            ),
+            *[lexer.Regex(operator, Literal(operator)) for operator in operators]
+        ])
+    ).apply_str(input_str).result
