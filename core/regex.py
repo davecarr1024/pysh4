@@ -205,6 +205,18 @@ def load(input_str: str) -> 'Rule[_Char]':
     class UntilEmpty(parser.UntilEmpty[_Rule], _ResultCombiner):
         ...
 
+    @dataclass(frozen=True)
+    class OneOrMore(parser.OneOrMore[_Rule], _ResultCombiner):
+        ...
+
+    class AndLoader(parser.Rule[_Rule]):
+        def apply(self, scope: parser.Scope[_Rule], state: lexer.TokenStream) -> parser.StateAndResult[_Rule]:
+            state = consume_token(state, '(')
+            state_and_result = OneOrMore(And, Ref('rule')).apply(scope, state)
+            state = state_and_result.state
+            state = consume_token(state, ')')
+            return parser.StateAndResult[_Rule](state, state_and_result.result)
+
     return parser.Parser[Rule[_Char]](
         {
             'root': UntilEmpty(And, Ref('rule')),
@@ -217,11 +229,13 @@ def load(input_str: str) -> 'Rule[_Char]':
                 Ref('any'),
                 Ref('range'),
                 Ref('special'),
+                Ref('and'),
             ]),
             'literal': TokenValueRule('char', lambda value: Literal(value)),
             'any': TokenValueRule('.', lambda _: Any()),
             'range': RangeLoader(),
             'special': SpecialLoader(),
+            'and': AndLoader(),
         },
         'root',
         lexer.Lexer([

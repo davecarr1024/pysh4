@@ -449,6 +449,11 @@ class RegexTest(unittest.TestCase):
                 regex.Literal('b'),
                 regex.Literal('c'),
             ])),
+            ('(abc)', regex.And([
+                regex.Literal('a'),
+                regex.Literal('b'),
+                regex.Literal('c'),
+            ])),
         ]):
             with self.subTest(input_str=input_str, regex_=rule):
                 self.assertEqual(
