@@ -71,8 +71,4 @@ def literal(value: str) -> Rule[_Char]:
 
 
 def load(input: str) -> Rule[_Char]:
-    from . import lexer, parser
-    return stream.until_empty(
-        processor.ref('rule'),
-        result_combiner
-    )
+    raise NotImplementedError(input)
