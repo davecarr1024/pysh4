@@ -287,3 +287,5 @@ class UntilEmptyTest(unittest.TestCase):
                     regex.until_empty(
                         regex.literal('a')
                     )(_Scope(), state)
+
+

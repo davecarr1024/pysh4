@@ -71,7 +71,3 @@ def literal(value: str) -> Rule[_Char]:
                 msg=f'expected {repr(value)} but got {repr(state.head)}')
         return state.tail, Token(state.head.value)
     return closure
-
-
-def load(input: str) -> Rule[_Char]:
-    raise NotImplementedError(input)

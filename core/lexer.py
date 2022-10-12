@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import MutableSequence, OrderedDict
+from typing import MutableSequence, OrderedDict, Sequence
 from . import processor, stream, regex
 
 
@@ -42,6 +42,10 @@ TokenStream = stream.Stream[Token]
 Rule = processor.Rule[CharStream, TokenStream]
 Scope = processor.Scope[CharStream, TokenStream]
 StateAndResult = processor.StateAndResult[CharStream, TokenStream]
+
+
+def _result_combiner(results: Sequence[TokenStream]) -> TokenStream:
+    return TokenStream.concat(results)
 
 
 def lexer(rules: OrderedDict[str, regex.Rule[Char]]) -> Rule:
