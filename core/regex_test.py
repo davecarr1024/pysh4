@@ -251,3 +251,39 @@ class ZeroOrOneTest(unittest.TestCase):
                     )(_Scope(), state),
                     result
                 )
+
+
+class UntilEmptyTest(unittest.TestCase):
+    def test_apply(self):
+        for state, result in list[Tuple[_CharStream, _StateAndResult]]([
+            (
+                _CharStream(),
+                (_CharStream(), regex.Token('')),
+            ),
+            (
+                _CharStream([_Char('a')]),
+                (_CharStream(), regex.Token('a')),
+            ),
+            (
+                _CharStream([_Char('a'), _Char('a')]),
+                (_CharStream(), regex.Token('aa')),
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    regex.until_empty(
+                        regex.literal('a')
+                    )(_Scope(), state),
+                    result
+                )
+
+    def test_apply_fail(self):
+        for state in list[_CharStream]([
+            _CharStream([_Char('b')]),
+            _CharStream([_Char('a'), _Char('b')]),
+        ]):
+            with self.subTest(state=state):
+                with self.assertRaises(errors.Error):
+                    regex.until_empty(
+                        regex.literal('a')
+                    )(_Scope(), state)
