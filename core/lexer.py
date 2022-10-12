@@ -45,7 +45,7 @@ StateAndResult = processor.StateAndResult[CharStream, TokenStream]
 
 
 def _result_combiner(results: Sequence[TokenStream]) -> TokenStream:
-    return TokenStream.concat(results)
+    return sum(results, TokenStream())
 
 
 def lexer(rules: OrderedDict[str, regex.Rule[Char]]) -> Rule:
@@ -59,4 +59,4 @@ def lexer(rules: OrderedDict[str, regex.Rule[Char]]) -> Rule:
     def _regex_rules(rules: OrderedDict[str, regex.Rule[Char]]) -> Rule:
         return processor.or_(*[_regex_rule(name, rule) for name, rule in rules.items()])
 
-    return stream.until_empty(_regex_rules(rules), TokenStream.concat)
+    return stream.until_empty(_regex_rules(rules), _result_combiner)
