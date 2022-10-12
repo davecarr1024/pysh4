@@ -62,6 +62,9 @@ def until_empty(rule: Rule[_Char]) -> Rule[_Char]:
 
 
 def literal(value: str) -> Rule[_Char]:
+    if len(value) != 1:
+        raise errors.Error(msg=f'invalid value {value}')
+
     def closure(scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
         if state.head.value != value:
             raise errors.Error(
