@@ -289,3 +289,33 @@ class UntilEmptyTest(unittest.TestCase):
                     )(_Scope(), state)
 
 
+class NotTest(unittest.TestCase):
+    def test_apply(self):
+        for state, result in list[Tuple[_CharStream, _StateAndResult]]([
+            (
+                _CharStream([_Char('b')]),
+                (_CharStream(), regex.Token('b')),
+            ),
+            (
+                _CharStream([_Char('b'), _Char('c')]),
+                (_CharStream([_Char('c')]), regex.Token('b')),
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    regex.not_(
+                        regex.literal('a')
+                    )(_Scope(), state),
+                    result
+                )
+
+    def test_apply_fail(self):
+        for state in list[_CharStream]([
+            _CharStream(),
+            _CharStream([_Char('a')]),
+        ]):
+            with self.subTest(state=state):
+                with self.assertRaises(errors.Error):
+                    regex.not_(
+                        regex.literal('a')
+                    )(_Scope(), state)

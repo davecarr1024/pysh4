@@ -71,3 +71,13 @@ def literal(value: str) -> Rule[_Char]:
                 msg=f'expected {repr(value)} but got {repr(state.head)}')
         return state.tail, Token(state.head.value)
     return closure
+
+
+def not_(rule: Rule[_Char]) -> Rule[_Char]:
+    def closure(scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
+        try:
+            rule(scope, state)
+        except errors.Error:
+            return state.tail, Token(state.head.value)
+        raise errors.Error(msg=f'successfully applied not rule {rule}')
+    return closure

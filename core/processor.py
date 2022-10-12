@@ -7,7 +7,7 @@ _State = TypeVar('_State')
 _Result = TypeVar('_Result')
 
 
-StateAndResult = Tuple[_State, _Result]
+StateAndResult = tuple[_State, _Result]
 
 Rule = Callable[['Scope[_State, _Result]', _State],
                 StateAndResult[_State, _Result]]
