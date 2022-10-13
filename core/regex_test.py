@@ -1,12 +1,14 @@
 from typing import Tuple
 import unittest
-from . import errors, processor, regex
+from . import errors, regex
 
 _Char = regex.Char
 _CharStream = regex.CharStream[_Char]
 _Rule = regex.Rule[_Char]
 _Scope = regex.Scope[_Char]
 _StateAndResult = regex.StateAndResult[_Char]
+_Literal = regex.Literal[_Char]
+_Or = regex.Or[_Char]
 
 
 class CharTest(unittest.TestCase):
@@ -40,7 +42,7 @@ class LiteralTest(unittest.TestCase):
         ]):
             with self.subTest(value=value):
                 with self.assertRaises(errors.Error):
-                    regex.Literal(value)
+                    _Literal(value)
 
     def test_apply(self):
         for state, result in list[Tuple[_CharStream, _StateAndResult]]([
@@ -55,7 +57,7 @@ class LiteralTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, result=result):
                 self.assertEqual(
-                    regex.Literal('a')(_Scope(), state),
+                    _Literal('a')(_Scope({}), state),
                     result
                 )
 
@@ -66,7 +68,7 @@ class LiteralTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    regex.Literal('a')(_Scope(), state)
+                    _Literal('a')(_Scope({}), state)
 
 
 class OrTest(unittest.TestCase):
@@ -91,10 +93,10 @@ class OrTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, result=result):
                 self.assertEqual(
-                    regex.Or([
-                        regex.Literal('a'),
-                        regex.Literal('b'),
-                    ])(_Scope(), state),
+                    _Or([
+                        _Literal('a'),
+                        _Literal('b'),
+                    ])(_Scope({}), state),
                     result
                 )
 
@@ -105,10 +107,10 @@ class OrTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    regex.Or([
-                        regex.Literal('a'),
-                        regex.Literal('b'),
-                    ])(_Scope(), state)
+                    _Or([
+                        _Literal('a'),
+                        _Literal('b'),
+                    ])(_Scope({}), state)
 
 
 class AndTest(unittest.TestCase):
@@ -126,9 +128,9 @@ class AndTest(unittest.TestCase):
             with self.subTest(state=state, result=result):
                 self.assertEqual(
                     regex.And([
-                        regex.Literal('a'),
-                        regex.Literal('b'),
-                    ])(_Scope(), state),
+                        _Literal('a'),
+                        _Literal('b'),
+                    ])(_Scope({}), state),
                     result
                 )
 
@@ -142,9 +144,9 @@ class AndTest(unittest.TestCase):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
                     regex.And([
-                        regex.Literal('a'),
-                        regex.Literal('b'),
-                    ])(_Scope(), state)
+                        _Literal('a'),
+                        _Literal('b'),
+                    ])(_Scope({}), state)
 
 
 class ZeroOrMoreTest(unittest.TestCase):
@@ -178,8 +180,8 @@ class ZeroOrMoreTest(unittest.TestCase):
             with self.subTest(state=state, result=result):
                 self.assertEqual(
                     regex.ZeroOrMore(
-                        regex.Literal('a')
-                    )(_Scope(), state),
+                        _Literal('a')
+                    )(_Scope({}), state),
                     result
                 )
 
@@ -207,8 +209,8 @@ class OneOrMoreTest(unittest.TestCase):
             with self.subTest(state=state, result=result):
                 self.assertEqual(
                     regex.OneOrMore(
-                        regex.Literal('a')
-                    )(_Scope(), state),
+                        _Literal('a')
+                    )(_Scope({}), state),
                     result
                 )
 
@@ -220,8 +222,8 @@ class OneOrMoreTest(unittest.TestCase):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
                     regex.OneOrMore(
-                        regex.Literal('a')
-                    )(_Scope(), state)
+                        _Literal('a')
+                    )(_Scope({}), state)
 
 
 class ZeroOrOneTest(unittest.TestCase):
@@ -247,8 +249,8 @@ class ZeroOrOneTest(unittest.TestCase):
             with self.subTest(state=state, result=result):
                 self.assertEqual(
                     regex.ZeroOrOne(
-                        regex.Literal('a')
-                    )(_Scope(), state),
+                        _Literal('a')
+                    )(_Scope({}), state),
                     result
                 )
 
@@ -272,8 +274,8 @@ class UntilEmptyTest(unittest.TestCase):
             with self.subTest(state=state, result=result):
                 self.assertEqual(
                     regex.UntilEmpty(
-                        regex.Literal('a')
-                    )(_Scope(), state),
+                        _Literal('a')
+                    )(_Scope({}), state),
                     result
                 )
 
@@ -285,8 +287,8 @@ class UntilEmptyTest(unittest.TestCase):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
                     regex.UntilEmpty(
-                        regex.Literal('a')
-                    )(_Scope(), state)
+                        _Literal('a')
+                    )(_Scope({}), state)
 
 
 class NotTest(unittest.TestCase):
@@ -304,8 +306,8 @@ class NotTest(unittest.TestCase):
             with self.subTest(state=state, result=result):
                 self.assertEqual(
                     regex.Not(
-                        regex.Literal('a')
-                    )(_Scope(), state),
+                        _Literal('a')
+                    )(_Scope({}), state),
                     result
                 )
 
@@ -317,5 +319,5 @@ class NotTest(unittest.TestCase):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
                     regex.Not(
-                        regex.Literal('a')
-                    )(_Scope(), state)
+                        _Literal('a')
+                    )(_Scope({}), state)
