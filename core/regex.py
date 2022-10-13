@@ -1,5 +1,6 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Sequence, TypeVar
+from typing import Generic, Sequence, TypeVar
 
 from . import errors, processor, stream
 
@@ -17,7 +18,15 @@ class Char:
 
 
 _Char = TypeVar('_Char', bound=Char, covariant=True)
-CharStream = stream.Stream[_Char]
+
+
+class CharStream(stream.Stream[_Char]):
+    def __repr__(self) -> str:
+        return ' '.join(char.value for char in self._items[:10])
+
+    @property
+    def tail(self) -> 'CharStream[_Char]':
+        return CharStream[_Char](self._items[1:])
 
 
 @dataclass(frozen=True)
@@ -32,51 +41,68 @@ class Token:
         return sum(tokens, Token(''))
 
 
+RuleError = processor.RuleError[CharStream[_Char], Token]
 Rule = processor.Rule[CharStream[_Char], Token]
 Scope = processor.Scope[CharStream[_Char], Token]
 StateAndResult = processor.StateAndResult[CharStream[_Char], Token]
-
-def or_(*rules: Rule[_Char]) -> Rule[_Char]:
-    return processor.or_(*rules)
-
-
-def and_(*rules: Rule[_Char]) -> Rule[_Char]:
-    return processor.and_(rules, Token.concat)
+Ref = processor.Ref[CharStream[_Char], Token]
+Or = processor.Or[CharStream[_Char], Token]
 
 
-def zero_or_more(rule: Rule[_Char]) -> Rule[_Char]:
-    return processor.zero_or_more(rule, Token.concat)
+class _ResultCombiner(processor.ResultCombiner[Token]):
+    def combine_results(self, results: Sequence[Token]) -> Token:
+        return Token.concat(results)
 
 
-def one_or_more(rule: Rule[_Char]) -> Rule[_Char]:
-    return processor.one_or_more(rule, Token.concat)
+class And(processor.And[CharStream[_Char], Token], _ResultCombiner):
+    ...
 
 
-def zero_or_one(rule: Rule[_Char]) -> Rule[_Char]:
-    return processor.zero_or_one(rule, Token.concat)
+class ZeroOrMore(processor.ZeroOrMore[CharStream[_Char], Token], _ResultCombiner):
+    ...
 
 
-def until_empty(rule: Rule[_Char]) -> Rule[_Char]:
-    return stream.until_empty(rule, Token.concat)
+class OneOrMore(processor.OneOrMore[CharStream[_Char], Token], _ResultCombiner):
+    ...
 
 
-def literal(value: str) -> Rule[_Char]:
-    if len(value) != 1:
-        raise errors.Error(msg=f'invalid value {value}')
+class ZeroOrOne(processor.ZeroOrOne[CharStream[_Char], Token], _ResultCombiner):
+    ...
 
-    def closure(scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
-        if state.head.value != value:
-            raise errors.Error(
-                msg=f'expected {repr(value)} but got {repr(state.head)}')
+
+class UntilEmpty(stream.UntilEmpty[CharStream[_Char], Token], _ResultCombiner):
+    ...
+
+
+@dataclass(frozen=True, repr=False)
+class Literal(Generic[_Char]):
+    value: str
+
+    def __post_init__(self):
+        if len(self.value) != 1:
+            raise errors.Error(msg=f'invalid literal value {self.value}')
+
+    def __repr__(self) -> str:
+        return repr(self.value)
+
+    def __call__(self, scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
+        if state.empty:
+            raise RuleError(rule=self, state=state, msg='empty stream')
+        if state.head.value != self.value:
+            raise RuleError[_Char](
+                rule=self, state=state, msg=f'expected {repr(self.value)} but got {state.head}')
         return state.tail, Token(state.head.value)
-    return closure
 
 
-def not_(rule: Rule[_Char]) -> Rule[_Char]:
-    def closure(scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
+@dataclass(frozen=True, repr=False)
+class Not(processor.UnaryRule[CharStream[_Char], Token]):
+    def __repr__(self) -> str:
+        return f'^{self.rule}'
+
+    def __call__(self, scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
         try:
-            rule(scope, state)
+            self.rule(scope, state)
         except errors.Error:
             return state.tail, Token(state.head.value)
-        raise errors.Error(msg=f'successfully applied not rule {rule}')
-    return closure
+        raise RuleError[_Char](rule=self, state=state,
+                               msg=f'successfully applied not rule')
