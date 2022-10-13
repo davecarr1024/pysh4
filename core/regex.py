@@ -36,7 +36,6 @@ Rule = processor.Rule[CharStream[_Char], Token]
 Scope = processor.Scope[CharStream[_Char], Token]
 StateAndResult = processor.StateAndResult[CharStream[_Char], Token]
 
-
 def or_(*rules: Rule[_Char]) -> Rule[_Char]:
     return processor.or_(*rules)
 

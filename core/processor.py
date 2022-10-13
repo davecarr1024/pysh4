@@ -1,5 +1,6 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Callable, Generic, Iterator, Mapping, MutableSequence, Sequence, Tuple, TypeVar
+from typing import Callable, Generic, Iterable, Iterator, Mapping, MutableSequence, Sequence, Sized, Tuple, TypeVar
 from . import errors
 
 
@@ -11,6 +12,21 @@ StateAndResult = tuple[_State, _Result]
 
 Rule = Callable[['Scope[_State, _Result]', _State],
                 StateAndResult[_State, _Result]]
+
+
+@dataclass(frozen=True, kw_only=True)
+class StateError(errors.NaryError, Generic[_State]):
+    state: _State
+
+
+@dataclass(frozen=True, kw_only=True)
+class RuleError(StateError, Generic[_State, _Result]):
+    rule: Rule[_State, _Result]
+
+
+@dataclass(frozen=True, kw_only=True)
+class RuleNameError(errors.UnaryError):
+    rule_name: str
 
 
 @dataclass(frozen=True)
@@ -30,82 +46,102 @@ class Scope(Generic[_State, _Result], Mapping[str, Rule[_State, _Result]]):
         return iter(self._rules)
 
 
-def ref(rule_name: str) -> Rule[_State, _Result]:
-    def closure(scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+@dataclass(frozen=True)
+class Ref(Generic[_State, _Result]):
+    rule_name: str
+
+    def __call__(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
         try:
-            return scope[rule_name](scope, state)
+            return scope[self.rule_name](scope, state)
         except errors.Error as error:
-            raise errors.Error(rule_name=rule_name,
-                               children=[error]) from error
-    return closure
+            raise RuleNameError(rule_name=self.rule_name,
+                                child=error) from error
 
 
-def or_(*rules: Rule[_State, _Result]) -> Rule[_State, _Result]:
-    def closure(scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+@dataclass(frozen=True)
+class NaryRule(Generic[_State, _Result], Iterable[Rule[_State, _Result]], Sized):
+    rules: Sequence[Rule[_State, _Result]]
+
+    def __len__(self) -> int:
+        return len(self.rules)
+
+    def __iter__(self) -> Iterator[Rule[_State, _Result]]:
+        return iter(self.rules)
+
+
+@dataclass(frozen=True, repr=False)
+class Or(NaryRule[_State, _Result]):
+    def __repr__(self):
+        return f'({"|".join(repr(rule) for rule in self.rules)})'
+
+    def __call__(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
         rule_errors: MutableSequence[errors.Error] = []
-        for rule in rules:
+        for rule in self.rules:
             try:
                 return rule(scope, state)
             except errors.Error as error:
                 rule_errors.append(error)
-        raise errors.Error(children=rule_errors)
-    return closure
+        raise RuleError(rule=self, state=state, children=rule_errors)
 
 
-ResultCombiner = Callable[[Sequence[_Result]], _Result]
+class ResultCombiner(Generic[_Result], ABC):
+    @abstractmethod
+    def combine_results(self, results: Sequence[_Result]) -> _Result:
+        ...
 
 
-def and_(
-    rules: Sequence[Rule[_State, _Result]],
-    result_combiner: ResultCombiner[_Result],
-) -> Rule[_State, _Result]:
-    def closure(scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+class And(NaryRule[_State, _Result], ResultCombiner[_Result]):
+    def __repr__(self) -> str:
+        return f'({" ".join(repr(rule) for rule in self.rules)})'
+
+    def __call__(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
         results: MutableSequence[_Result] = []
-        for rule in rules:
+        for rule in self.rules:
             state, result = rule(scope, state)
             results.append(result)
-        return state, result_combiner(results)
-    return closure
+        return state, self.combine_results(results)
 
 
-def zero_or_more(
-    rule: Rule[_State, _Result],
-    result_combiner: ResultCombiner[_Result],
-) -> Rule[_State, _Result]:
-    def closure(scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+@dataclass(frozen=True)
+class UnaryRule(Generic[_State, _Result]):
+    rule: Rule[_State, _Result]
+
+
+class ZeroOrMore(UnaryRule[_State, _Result], ResultCombiner):
+    def __repr__(self) -> str:
+        return f'{self.rule}*'
+
+    def __call__(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
         results: MutableSequence[_Result] = []
         while True:
             try:
-                state, result = rule(scope, state)
+                state, result = self.rule(scope, state)
                 results.append(result)
             except errors.Error:
-                return state, result_combiner(results)
-    return closure
+                return state, self.combine_results(results)
 
 
-def one_or_more(
-    rule: Rule[_State, _Result],
-    result_combiner: ResultCombiner[_Result],
-) -> Rule[_State, _Result]:
-    def closure(scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
-        state, result = rule(scope, state)
+class OneOrMore(UnaryRule[_State, _Result], ResultCombiner):
+    def __repr__(self) -> str:
+        return f'{self.rule}+'
+
+    def __call__(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+        state, result = self.rule(scope, state)
         results: MutableSequence[_Result] = [result]
         while True:
             try:
-                state, result = rule(scope, state)
+                state, result = self.rule(scope, state)
                 results.append(result)
             except errors.Error:
-                return state, result_combiner(results)
-    return closure
+                return state, self.combine_results(results)
 
 
-def zero_or_one(
-    rule: Rule[_State, _Result],
-    result_combiner: ResultCombiner[_Result],
-) -> Rule[_State, _Result]:
-    def closure(scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+class ZeroOrOne(UnaryRule[_State, _Result], ResultCombiner):
+    def __repr__(self) -> str:
+        return f'{self.rule}?'
+
+    def __call__(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
         try:
-            return rule(scope, state)
+            return self.rule(scope, state)
         except errors.Error:
-            return state, result_combiner([])
-    return closure
+            return state, self.combine_results([])

@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Callable, Generic, Iterable, Iterator, MutableSequence, Sequence, Sized, TypeVar
 
@@ -6,8 +7,15 @@ from . import errors, processor
 _Item = TypeVar('_Item', covariant=True)
 
 
+class Emptyable(ABC):
+    @property
+    @abstractmethod
+    def empty(self) -> bool:
+        ...
+
+
 @dataclass(frozen=True)
-class Stream(Generic[_Item], Iterable[_Item], Sized):
+class Stream(Generic[_Item], Iterable[_Item], Sized, Emptyable):
     _items: Sequence[_Item] = field(default_factory=list[_Item])
 
     def __len__(self) -> int:
@@ -40,29 +48,17 @@ class Stream(Generic[_Item], Iterable[_Item], Sized):
         return sum(streams, Stream[_Item]([]))
 
 
+_State = TypeVar('_State', bound=Emptyable)
 _Result = TypeVar('_Result')
 
 
-def until_empty(
-    rule: processor.Rule[Stream[_Item], _Result],
-    result_combiner: processor.ResultCombiner[_Result],
-) -> processor.Rule[Stream[_Item], _Result]:
-    def closure(
-        scope: processor.Scope[Stream[_Item], _Result],
-        state: Stream[_Item],
-    ) -> processor.StateAndResult[Stream[_Item], _Result]:
+class UntilEmpty(processor.UnaryRule[_State, _Result], processor.ResultCombiner[_Result]):
+    def __repr__(self) -> str:
+        return f'{self.rule}!'
+
+    def __call__(self, scope: processor.Scope[_State, _Result], state: _State) -> processor.StateAndResult[_State, _Result]:
         results: MutableSequence[_Result] = []
         while not state.empty:
-            state, result = rule(scope, state)
+            state, result = self.rule(scope, state)
             results.append(result)
-        return state, result_combiner(results)
-    return closure
-
-
-def head_rule(result_func: Callable[[_Item], _Result]) -> processor.Rule[Stream[_Item], _Result]:
-    def closure(
-        scope: processor.Scope[Stream[_Item], _Result],
-        state: Stream[_Item],
-    ) -> processor.StateAndResult[Stream[_Item], _Result]:
-        return state.tail, result_func(state.head)
-    return closure
+        return state, self.combine_results(results)

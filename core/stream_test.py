@@ -100,11 +100,14 @@ _Scope = processor.Scope[_State, _Result]
 
 
 def eq(value: int) -> _Rule:
-    def result(head: int) -> _Result:
-        if head != value:
-            raise errors.Error(msg=f'expected {value} got {head}')
-        return head
-    return stream.head_rule(result)
+    def inner(scope: _Scope, state: _State) -> _StateAndResult:
+        if state.empty:
+            raise processor.StateError(state=state, msg='empty stream')
+        if state.head != value:
+            raise processor.StateError(
+                state=state, msg=f'expected value {value} got {state.head}')
+        return state.tail, state.head
+    return inner
 
 
 class EqTest(unittest.TestCase):
@@ -135,7 +138,13 @@ class EqTest(unittest.TestCase):
                     eq(1)(_Scope(), state)
 
 
-result_combiner: processor.ResultCombiner[_Result] = sum
+class _ResultCombiner(processor.ResultCombiner[_Result]):
+    def combine_results(self, results: Sequence[_Result]) -> _Result:
+        return sum(results)
+
+
+class _UntilEmpty(stream.UntilEmpty[_State, _Result], _ResultCombiner):
+    ...
 
 
 class UntilEmptyTest(unittest.TestCase):
@@ -156,10 +165,7 @@ class UntilEmptyTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    stream.until_empty(
-                        eq(1),
-                        result_combiner
-                    )(_Scope(), state),
+                    _UntilEmpty(eq(1))(_Scope(), state),
                     output
                 )
 
@@ -170,4 +176,4 @@ class UntilEmptyTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    stream.until_empty(eq(1), result_combiner)(_Scope(), state)
+                    _UntilEmpty(eq(1))(_Scope(), state)
