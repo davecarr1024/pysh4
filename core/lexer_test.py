@@ -1,7 +1,6 @@
-from collections import OrderedDict
 from typing import Tuple
 import unittest
-from . import errors, lexer, regex
+from . import lexer, regex
 
 
 class LexerTest(unittest.TestCase):
@@ -35,3 +34,35 @@ class LexerTest(unittest.TestCase):
                     lexer.Scope(), lexer.load_char_stream(input))
                 self.assertEqual(len(state), 0)
                 self.assertEqual(actual_result, expected_result)
+
+
+class CharStreamTest(unittest.TestCase):
+    def test_load(self):
+        for input, output in list[Tuple[str, lexer.CharStream]]([
+            (
+                '',
+                lexer.CharStream(),
+            ),
+            (
+                'abc',
+                lexer.CharStream([
+                    lexer.Char('a', lexer.Position(0, 0)),
+                    lexer.Char('b', lexer.Position(0, 1)),
+                    lexer.Char('c', lexer.Position(0, 2)),
+                ]),
+            ),
+            (
+                'abc\ndef',
+                lexer.CharStream([
+                    lexer.Char('a', lexer.Position(0, 0)),
+                    lexer.Char('b', lexer.Position(0, 1)),
+                    lexer.Char('c', lexer.Position(0, 2)),
+                    lexer.Char('\n', lexer.Position(0, 3)),
+                    lexer.Char('d', lexer.Position(1, 0)),
+                    lexer.Char('e', lexer.Position(1, 1)),
+                    lexer.Char('f', lexer.Position(1, 2)),
+                ]),
+            ),
+        ]):
+            with self.subTest(input=input, output=output):
+                self.assertEqual(lexer.load_char_stream(input), output)

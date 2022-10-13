@@ -9,7 +9,7 @@ class Position:
     column: int
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Char(regex.Char):
     position: Position
 
