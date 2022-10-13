@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Sequence, Tuple
 import unittest
 from . import errors, processor
@@ -9,14 +10,16 @@ _Rule = processor.Rule[_State, _Result]
 _Scope = processor.Scope[_State, _Result]
 
 
-def eq(value: int) -> _Rule:
-    def rule(scope: _Scope, state: _State) -> _StateAndResult:
+@dataclass(frozen=True)
+class Eq:
+    value: int
+
+    def __call__(self, scope: _Scope, state: _State) -> _StateAndResult:
         if len(state) == 0:
             raise errors.Error(msg='empty state')
-        if state[0] != value:
-            raise errors.Error(msg=f'expected {value} got {state[0]}')
-        return state[1:], value
-    return rule
+        if state[0] != self.value:
+            raise errors.Error(msg=f'expected {self.value} got {state[0]}')
+        return state[1:], state[0]
 
 
 class ResultCombiner(processor.ResultCombiner[_Result]):
@@ -52,7 +55,7 @@ class EqTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    eq(1)(_Scope(), state),
+                    Eq(1)(_Scope({}), state),
                     output
                 )
 
@@ -63,13 +66,29 @@ class EqTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    eq(1)(_Scope(), state)
+                    Eq(1)(_Scope({}), state)
 
 
 class ScopeTest(unittest.TestCase):
     def test_getitem_fail(self):
         with self.assertRaises(errors.Error):
-            _Scope({'a': eq(1)})['b']
+            _Scope({'a': Eq(1)})['b']
+
+    def test_or(self):
+        self.assertEqual(
+            _Scope({
+                'a': Eq(1),
+                'b': Eq(2),
+            }) | _Scope({
+                'b': Eq(3),
+                'c': Eq(4),
+            }),
+            _Scope({
+                'a': Eq(1),
+                'b': Eq(3),
+                'c': Eq(4),
+            })
+        )
 
 
 class RefTest(unittest.TestCase):
@@ -80,7 +99,7 @@ class RefTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _Ref('a')(_Scope({'a': eq(1)}), state),
+                    _Ref('a')(_Scope({'a': Eq(1)}), state),
                     output
                 )
 
@@ -91,7 +110,7 @@ class RefTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    _Ref('a')(_Scope({'a': eq(1)}), state)
+                    _Ref('a')(_Scope({'a': Eq(1)}), state)
 
 
 class OrTest(unittest.TestCase):
@@ -104,7 +123,7 @@ class OrTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _Or([eq(1), eq(2)])(_Scope(), state),
+                    _Or([Eq(1), Eq(2)])(_Scope({}), state),
                     output
                 )
 
@@ -115,7 +134,7 @@ class OrTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    _Or([eq(1), eq(2)])(_Scope(), state)
+                    _Or([Eq(1), Eq(2)])(_Scope({}), state)
 
 
 class AndTest(unittest.TestCase):
@@ -126,7 +145,7 @@ class AndTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _And([eq(1), eq(2)])(_Scope(), state),
+                    _And([Eq(1), Eq(2)])(_Scope({}), state),
                     output
                 )
 
@@ -139,7 +158,7 @@ class AndTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    _And([eq(1), eq(2)])(_Scope(), state)
+                    _And([Eq(1), Eq(2)])(_Scope({}), state)
 
 
 class ZeroOrMoreTest(unittest.TestCase):
@@ -154,7 +173,7 @@ class ZeroOrMoreTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _ZeroOrMore(eq(1))(_Scope(), state),
+                    _ZeroOrMore(Eq(1))(_Scope({}), state),
                     output
                 )
 
@@ -169,18 +188,18 @@ class OneOrMoreTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _OneOrMore(eq(1))(_Scope(), state),
+                    _OneOrMore(Eq(1))(_Scope({}), state),
                     output
                 )
 
     def test_apply_fail(self):
         for state in list[_State]([
-            ([], ([], 0)),
-            ([2], ([2], 0)),
+            [],
+            [2],
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    _OneOrMore(eq(1))(_Scope(), state)
+                    _OneOrMore(Eq(1))(_Scope({}), state)
 
 
 class ZeroOrOneTest(unittest.TestCase):
@@ -193,6 +212,6 @@ class ZeroOrOneTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _ZeroOrOne(eq(1))(_Scope(), state),
+                    _ZeroOrOne(Eq(1))(_Scope({}), state),
                     output
                 )

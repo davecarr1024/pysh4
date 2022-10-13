@@ -124,7 +124,7 @@ class EqTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    eq(1)(_Scope(), state),
+                    eq(1)(_Scope({}), state),
                     output
                 )
 
@@ -135,7 +135,7 @@ class EqTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    eq(1)(_Scope(), state)
+                    eq(1)(_Scope({}), state)
 
 
 class _ResultCombiner(processor.ResultCombiner[_Result]):
@@ -165,7 +165,7 @@ class UntilEmptyTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _UntilEmpty(eq(1))(_Scope(), state),
+                    _UntilEmpty(eq(1))(_Scope({}), state),
                     output
                 )
 
@@ -176,4 +176,4 @@ class UntilEmptyTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    _UntilEmpty(eq(1))(_Scope(), state)
+                    _UntilEmpty(eq(1))(_Scope({}), state)

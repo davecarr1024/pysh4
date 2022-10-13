@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Mapping, MutableSequence, Sequence
+from typing import MutableSequence, Sequence
 from . import processor, stream, regex
 
 
@@ -14,7 +14,8 @@ class Char(regex.Char):
     position: Position
 
 
-CharStream = stream.Stream[Char]
+class CharStream(regex.CharStream[Char]):
+    ...
 
 
 def load_char_stream(input: str) -> CharStream:
@@ -37,25 +38,51 @@ class Token(regex.Token):
     position: Position
 
 
-TokenStream = stream.Stream[Token]
+class TokenStream(stream.Stream[Token]):
+    ...
+
 
 Rule = processor.Rule[CharStream, TokenStream]
 Scope = processor.Scope[CharStream, TokenStream]
 StateAndResult = processor.StateAndResult[CharStream, TokenStream]
+_Ref = processor.Ref[CharStream, TokenStream]
+_Or = processor.Or[CharStream, TokenStream]
 
 
-def lexer(**rules: regex.Rule[Char]) -> Rule:
-    def _regex_rule(rule_name: str, regex_: regex.Rule[Char]) -> Rule:
-        def closure(scope: Scope, state: CharStream) -> StateAndResult:
-            position = state.head.position
-            state, token = regex_(regex.Scope[Char](), state)
-            return state, TokenStream([Token(value=token.value, rule_name=rule_name, position=position)])
-        return closure
-
-    def _regex_rules(rules: Mapping[str, regex.Rule[Char]]) -> Rule:
-        return processor.or_(*[_regex_rule(name, rule) for name, rule in rules.items()])
-
-    def _result_combiner(results: Sequence[TokenStream]) -> TokenStream:
+class _ResultCombiner(processor.ResultCombiner[TokenStream]):
+    def combine_results(self, results: Sequence[TokenStream]) -> TokenStream:
         return sum(results, TokenStream())
 
-    return stream.until_empty(_regex_rules(rules), _result_combiner)
+
+class _UntilEmpty(stream.UntilEmpty[CharStream, TokenStream], _ResultCombiner):
+    ...
+
+
+_RULE_PREFIX = '_lexer'
+_ROOT_RULE_NAME = f'{_RULE_PREFIX}_root'
+_REGEX_RULE_NAME = f'{_RULE_PREFIX}_regexes'
+
+
+@dataclass(frozen=True, repr=False)
+class _Regex:
+    rule_name: str
+    rule: regex.Rule[Char]
+
+    def __call__(self, scope: Scope, state: CharStream) -> StateAndResult:
+        position = state.head.position
+        state, token = self.rule(scope, state)
+        return state, TokenStream([Token(token.value, self.rule_name, position)])
+
+
+@dataclass(frozen=True, init=False, repr=False)
+class Lexer(processor.Processor[CharStream, TokenStream]):
+    def __init__(self, **rules: regex.Rule[Char]):
+        super().__init__(
+            {
+                _ROOT_RULE_NAME: _UntilEmpty(_Ref(_REGEX_RULE_NAME)),
+                _REGEX_RULE_NAME: _Or([
+                    _Regex(rule_name, rule) for rule_name, rule in rules.items()
+                ])
+            },
+            _ROOT_RULE_NAME,
+        )

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Callable, Generic, Iterable, Iterator, MutableSequence, Sequence, Sized, TypeVar
+from typing import Generic, Iterable, Iterator, MutableSequence, Sequence, Sized, TypeVar
 
 from . import errors, processor
 
@@ -25,7 +25,7 @@ class Stream(Generic[_Item], Iterable[_Item], Sized, Emptyable):
         return iter(self._items)
 
     def __add__(self, rhs: 'Stream[_Item]') -> 'Stream[_Item]':
-        return Stream[_Item](list(self._items)+list(rhs._items))
+        return self.__class__(list(self._items)+list(rhs._items))
 
     @property
     def empty(self) -> bool:
@@ -41,11 +41,11 @@ class Stream(Generic[_Item], Iterable[_Item], Sized, Emptyable):
     def tail(self) -> 'Stream[_Item]':
         if self.empty:
             raise errors.Error(msg='empty stream')
-        return Stream[_Item](self._items[1:])
+        return self.__class__(self._items[1:])
 
-    @staticmethod
-    def concat(streams: Sequence['Stream[_Item]']) -> 'Stream[_Item]':
-        return sum(streams, Stream[_Item]([]))
+    @classmethod
+    def concat(cls, streams: Sequence['Stream[_Item]']) -> 'Stream[_Item]':
+        return sum(streams, cls())
 
 
 _State = TypeVar('_State', bound=Emptyable)

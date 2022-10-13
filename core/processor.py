@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Callable, Generic, Iterable, Iterator, Mapping, MutableSequence, Sequence, Sized, Tuple, TypeVar
+from dataclasses import dataclass
+from typing import Callable, Generic, Iterable, Iterator, Mapping, MutableSequence, Sequence, Sized, TypeVar
 from . import errors
 
 
@@ -20,7 +20,7 @@ class StateError(errors.NaryError, Generic[_State]):
 
 
 @dataclass(frozen=True, kw_only=True)
-class RuleError(StateError, Generic[_State, _Result]):
+class RuleError(StateError[_State], Generic[_State, _Result]):
     rule: Rule[_State, _Result]
 
 
@@ -31,8 +31,10 @@ class RuleNameError(errors.UnaryError):
 
 @dataclass(frozen=True)
 class Scope(Generic[_State, _Result], Mapping[str, Rule[_State, _Result]]):
-    _rules: Mapping[str, Rule[_State, _Result]] = field(
-        default_factory=dict[str, Rule[_State, _Result]])
+    _rules: Mapping[str, Rule[_State, _Result]]
+
+    def __repr__(self) -> str:
+        return repr(self._rules)
 
     def __getitem__(self, name: str) -> Rule[_State, _Result]:
         if name not in self._rules:
@@ -44,6 +46,22 @@ class Scope(Generic[_State, _Result], Mapping[str, Rule[_State, _Result]]):
 
     def __iter__(self) -> Iterator[str]:
         return iter(self._rules)
+
+    def __or__(self, rhs: 'Scope[_State,_Result]') -> 'Scope[_State,_Result]':
+        return Scope[_State, _Result](dict(self._rules) | dict(rhs._rules))
+
+
+@dataclass(frozen=True)
+class Processor(Scope[_State, _Result]):
+    root_rule_name: str
+
+    def __post_init__(self):
+        if self.root_rule_name not in self:
+            raise errors.Error(
+                msg=f'root_rule_name {self.root_rule_name} not found')
+
+    def __call__(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+        return self[self.root_rule_name](scope | self, state)
 
 
 @dataclass(frozen=True)
@@ -107,7 +125,7 @@ class UnaryRule(Generic[_State, _Result]):
     rule: Rule[_State, _Result]
 
 
-class ZeroOrMore(UnaryRule[_State, _Result], ResultCombiner):
+class ZeroOrMore(UnaryRule[_State, _Result], ResultCombiner[_Result]):
     def __repr__(self) -> str:
         return f'{self.rule}*'
 
@@ -121,7 +139,7 @@ class ZeroOrMore(UnaryRule[_State, _Result], ResultCombiner):
                 return state, self.combine_results(results)
 
 
-class OneOrMore(UnaryRule[_State, _Result], ResultCombiner):
+class OneOrMore(UnaryRule[_State, _Result], ResultCombiner[_Result]):
     def __repr__(self) -> str:
         return f'{self.rule}+'
 
@@ -136,7 +154,7 @@ class OneOrMore(UnaryRule[_State, _Result], ResultCombiner):
                 return state, self.combine_results(results)
 
 
-class ZeroOrOne(UnaryRule[_State, _Result], ResultCombiner):
+class ZeroOrOne(UnaryRule[_State, _Result], ResultCombiner[_Result]):
     def __repr__(self) -> str:
         return f'{self.rule}?'
 

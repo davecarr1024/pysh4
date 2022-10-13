@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Generic, Sequence, TypeVar
 
@@ -87,7 +86,7 @@ class Literal(Generic[_Char]):
 
     def __call__(self, scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
         if state.empty:
-            raise RuleError(rule=self, state=state, msg='empty stream')
+            raise RuleError[_Char](rule=self, state=state, msg='empty stream')
         if state.head.value != self.value:
             raise RuleError[_Char](
                 rule=self, state=state, msg=f'expected {repr(self.value)} but got {state.head}')
