@@ -14,8 +14,7 @@ class Char(regex.Char):
     position: Position
 
 
-class CharStream(regex.CharStream[Char]):
-    ...
+CharStream = regex.CharStream[Char]
 
 
 def load_char_stream(input: str) -> CharStream:
@@ -38,8 +37,7 @@ class Token(regex.Token):
     position: Position
 
 
-class TokenStream(stream.Stream[Token]):
-    ...
+TokenStream = stream.Stream[Token]
 
 
 Rule = processor.Rule[CharStream, TokenStream]
@@ -65,13 +63,13 @@ _REGEX_RULE_NAME = f'{_RULE_PREFIX}_regexes'
 
 @dataclass(frozen=True, repr=False)
 class _Regex:
-    rule_name: str
+    name: str
     rule: regex.Rule[Char]
 
     def __call__(self, scope: Scope, state: CharStream) -> StateAndResult:
         position = state.head.position
-        state, token = self.rule(scope, state)
-        return state, TokenStream([Token(token.value, self.rule_name, position)])
+        state, token = self.rule(regex.Scope[Char]({}), state)
+        return state, TokenStream([Token(token.value, self.name, position)])
 
 
 @dataclass(frozen=True, init=False, repr=False)
@@ -81,7 +79,7 @@ class Lexer(processor.Processor[CharStream, TokenStream]):
             {
                 _ROOT_RULE_NAME: _UntilEmpty(_Ref(_REGEX_RULE_NAME)),
                 _REGEX_RULE_NAME: _Or([
-                    _Regex(rule_name, rule) for rule_name, rule in rules.items()
+                    _Regex(name, rule) for name, rule in rules.items()
                 ])
             },
             _ROOT_RULE_NAME,

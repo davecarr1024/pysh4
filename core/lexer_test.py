@@ -3,12 +3,16 @@ import unittest
 from . import lexer, regex
 
 
+_Literal = regex.Literal[lexer.Char]
+_OneOrMore = regex.OneOrMore[lexer.Char]
+
+
 class LexerTest(unittest.TestCase):
     def test_apply(self):
         for lexer_, input, expected_result in list[Tuple[lexer.Rule, str, lexer.TokenStream]]([
             (
-                lexer.lexer(
-                    r=regex.literal('a'),
+                lexer.Lexer(
+                    r=_Literal('a'),
                 ),
                 'a',
                 lexer.TokenStream([
@@ -16,9 +20,9 @@ class LexerTest(unittest.TestCase):
                 ]),
             ),
             (
-                lexer.lexer(
-                    r=regex.one_or_more(regex.literal('a')),
-                    s=regex.one_or_more(regex.literal('b')),
+                lexer.Lexer(
+                    r=_OneOrMore(_Literal('a')),
+                    s=_OneOrMore(_Literal('b')),
                 ),
                 'aaaabbbaab',
                 lexer.TokenStream([
@@ -31,7 +35,7 @@ class LexerTest(unittest.TestCase):
         ]):
             with self.subTest(lexer_=lexer_, input=input, expected_result=expected_result):
                 state, actual_result = lexer_(
-                    lexer.Scope(), lexer.load_char_stream(input))
+                    lexer.Scope({}), lexer.load_char_stream(input))
                 self.assertEqual(len(state), 0)
                 self.assertEqual(actual_result, expected_result)
 

@@ -18,14 +18,7 @@ class Char:
 
 _Char = TypeVar('_Char', bound=Char, covariant=True)
 
-
-class CharStream(stream.Stream[_Char]):
-    def __repr__(self) -> str:
-        return ' '.join(char.value for char in self._items[:10])
-
-    @property
-    def tail(self) -> 'CharStream[_Char]':
-        return CharStream[_Char](self._items[1:])
+CharStream = stream.Stream[_Char]
 
 
 @dataclass(frozen=True)
