@@ -1,10 +1,6 @@
 from typing import Tuple
 import unittest
-from . import lexer, regex
-
-
-_Literal = regex.Literal[lexer.Char]
-_OneOrMore = regex.OneOrMore[lexer.Char]
+from . import lexer
 
 
 class LexerTest(unittest.TestCase):
@@ -12,7 +8,7 @@ class LexerTest(unittest.TestCase):
         for lexer_, input, expected_result in list[Tuple[lexer.Rule, str, lexer.TokenStream]]([
             (
                 lexer.Lexer(
-                    r=_Literal('a'),
+                    r=lexer.ReLiteral('a'),
                 ),
                 'a',
                 lexer.TokenStream([
@@ -21,8 +17,8 @@ class LexerTest(unittest.TestCase):
             ),
             (
                 lexer.Lexer(
-                    r=_OneOrMore(_Literal('a')),
-                    s=_OneOrMore(_Literal('b')),
+                    r=lexer.ReOneOrMore(lexer.ReLiteral('a')),
+                    s=lexer.ReOneOrMore(lexer.ReLiteral('b')),
                 ),
                 'aaaabbbaab',
                 lexer.TokenStream([

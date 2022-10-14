@@ -1,5 +1,6 @@
-from typing import TypeVar
-from . import lexer, processor, stream
+from dataclasses import dataclass
+from typing import Tuple, TypeVar
+from . import errors, lexer, processor, stream
 
 _Result = TypeVar('_Result')
 
@@ -18,4 +19,21 @@ UntilEmpty = stream.UntilEmpty[lexer.TokenStream, _Result]
 UnaryRule = processor.UnaryRule[lexer.TokenStream, _Result]
 NaryRule = processor.NaryRule[lexer.TokenStream, _Result]
 ResultCombiner = processor.ResultCombiner[_Result]
-Parser = processor.Processor[lexer.TokenStream, _Result]
+
+
+@dataclass(frozen=True, init=False)
+class Parser(processor.Processor[lexer.TokenStream, _Result]):
+    def __init__(self, **rules: Rule[_Result]):
+        super().__init__(
+            rules,
+            list(rules.keys())[0]
+        )
+
+
+def get_token_value(state: lexer.TokenStream, rule_name: str) -> Tuple[lexer.TokenStream, str]:
+    if state.empty:
+        raise errors.Error(msg='empty stream')
+    if state.head.rule_name != rule_name:
+        raise errors.Error(
+            msg=f'expected token rule_name {rule_name} got {state.head.rule_name}')
+    return state.tail, state.head.value

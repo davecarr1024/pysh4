@@ -6,6 +6,9 @@ from typing import Optional, Sequence
 class Error(Exception):
     msg: Optional[str] = None
 
+    def __str__(self) -> str:
+        return repr(self)
+
 
 @dataclass(frozen=True, kw_only=True)
 class NaryError(Error):

@@ -46,6 +46,17 @@ StateAndResult = processor.StateAndResult[CharStream, TokenStream]
 _Ref = processor.Ref[CharStream, TokenStream]
 _Or = processor.Or[CharStream, TokenStream]
 
+ReOr = regex.Or[Char]
+ReAnd = regex.And[Char]
+ReZeroOrMore = regex.ZeroOrMore[Char]
+ReOneOrMore = regex.OneOrMore[Char]
+ReZeroOrOne = regex.ZeroOrOne[Char]
+ReUntilEmpty = regex.UntilEmpty[Char]
+ReLiteral = regex.Literal[Char]
+ReNot = regex.Not[Char]
+ReClass = regex.Class[Char]
+ReRange = regex.Range[Char]
+
 
 class _ResultCombiner(processor.ResultCombiner[TokenStream]):
     def combine_results(self, results: Sequence[TokenStream]) -> TokenStream:
