@@ -119,3 +119,24 @@ class Class(Generic[_Char]):
             raise RuleError[_Char](
                 rule=self, state=state, msg=f'expected {repr(self.values)} but got {state.head}')
         return state.tail, Token(state.head.value)
+
+
+@dataclass(frozen=True, repr=False)
+class Range(Generic[_Char]):
+    min: str
+    max: str
+
+    def __post_init__(self):
+        if len(self.min) != 1 or len(self.max) != 1 or self.max < self.min:
+            raise errors.Error(msg=f'invalid range {self}')
+
+    def __repr__(self) -> str:
+        return f'[{self.min}-{self.max}]'
+
+    def __call__(self, scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
+        if state.empty:
+            raise RuleError[_Char](rule=self, state=state, msg='empty stream')
+        if state.head.value < self.min or state.head.value > self.max:
+            raise RuleError[_Char](
+                rule=self, state=state, msg=f'expected in {self} but got {state.head}')
+        return state.tail, Token(state.head.value)
