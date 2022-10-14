@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Sequence, Tuple
 import unittest
 from . import errors, regex
 
@@ -8,6 +8,7 @@ _Rule = regex.Rule[_Char]
 _Scope = regex.Scope[_Char]
 _StateAndResult = regex.StateAndResult[_Char]
 _Literal = regex.Literal[_Char]
+_Class = regex.Class[_Char]
 _Or = regex.Or[_Char]
 
 
@@ -69,6 +70,51 @@ class LiteralTest(unittest.TestCase):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
                     _Literal('a')(_Scope({}), state)
+
+
+class ClassTest(unittest.TestCase):
+    def test_ctor_fail(self):
+        for value in list[Sequence[str]]([
+            [''],
+            ['aa'],
+        ]):
+            with self.subTest(value=value):
+                with self.assertRaises(errors.Error):
+                    _Class(value)
+
+    def test_apply(self):
+        for state, result in list[Tuple[_CharStream, _StateAndResult]]([
+            (
+                _CharStream([_Char('a')]),
+                (_CharStream(), regex.Token('a')),
+            ),
+            (
+                _CharStream([_Char('a'), _Char('c')]),
+                (_CharStream([_Char('c')]), regex.Token('a')),
+            ),
+            (
+                _CharStream([_Char('b')]),
+                (_CharStream(), regex.Token('b')),
+            ),
+            (
+                _CharStream([_Char('b'), _Char('c')]),
+                (_CharStream([_Char('c')]), regex.Token('b')),
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    _Class('ab')(_Scope({}), state),
+                    result
+                )
+
+    def test_apply_fail(self):
+        for state in list[_CharStream]([
+            _CharStream(),
+            _CharStream([_Char('c')]),
+        ]):
+            with self.subTest(state=state):
+                with self.assertRaises(errors.Error):
+                    _Class('ab')(_Scope({}), state)
 
 
 class OrTest(unittest.TestCase):

@@ -98,3 +98,24 @@ class Not(processor.UnaryRule[CharStream[_Char], Token]):
             return state.tail, Token(state.head.value)
         raise RuleError[_Char](rule=self, state=state,
                                msg=f'successfully applied not rule')
+
+
+@dataclass(frozen=True, repr=False)
+class Class(Generic[_Char]):
+    values: Sequence[str]
+
+    def __post_init__(self):
+        for value in self.values:
+            if len(value) != 1:
+                raise errors.Error(msg=f'invalid literal value {value}')
+
+    def __repr__(self) -> str:
+        return repr(self.values)
+
+    def __call__(self, scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
+        if state.empty:
+            raise RuleError[_Char](rule=self, state=state, msg='empty stream')
+        if state.head.value not in self.values:
+            raise RuleError[_Char](
+                rule=self, state=state, msg=f'expected {repr(self.values)} but got {state.head}')
+        return state.tail, Token(state.head.value)
