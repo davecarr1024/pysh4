@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import string
-from typing import Mapping, Tuple
+from typing import Iterator, Mapping, Tuple
 import unittest
 from . import errors, lexer, parser
 
@@ -17,6 +17,17 @@ class _Int:
 @dataclass(frozen=True, repr=False)
 class _Scope(Mapping[str, _Int]):
     _vals: Mapping[str, _Int]
+
+    def __getitem__(self, name: str) -> _Int:
+        if name not in self._vals:
+            raise errors.Error(msg=f'unknown name {name}')
+        return self._vals[name]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._vals)
+
+    def __len__(self) -> int:
+        return len(self._vals)
 
 
 class _Expr(ABC):
@@ -93,3 +104,16 @@ class LoadTest(unittest.TestCase):
         ]):
             with self.subTest(input=input, expr=expr):
                 self.assertEqual(_load_expr(input), expr)
+
+    def test_eval(self):
+        for input, val in list[Tuple[str, _Int]]([
+            ('1', _Int(1)),
+            ('a', _Int(1)),
+        ]):
+            with self.subTest(input=input, val=val):
+                self.assertEqual(
+                    _load_expr(input).eval(_Scope({
+                        'a': _Int(1),
+                    })),
+                    val
+                )
