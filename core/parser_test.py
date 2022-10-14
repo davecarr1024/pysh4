@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 import string
-from typing import Iterator, Mapping, Tuple
+import operator
+from typing import Callable, Iterator, Mapping, Tuple
 import unittest
 from . import errors, lexer, parser
 
@@ -60,6 +62,26 @@ class _Ref(_Expr):
         return scope[self.name]
 
 
+@dataclass(frozen=True, repr=False)
+class _Operation(_Expr):
+    class Operator(Enum):
+        ADD = '+'
+
+    operator: Operator
+    lhs: _Expr
+    rhs: _Expr
+
+    def __repr__(self) -> str:
+        return f'{self.lhs} {self.operator.value} {self.rhs}'
+
+    def eval(self, scope: _Scope) -> _Int:
+        funcs: Mapping[_Operation.Operator, Callable[[int, int], int]] = {
+            _Operation.Operator.ADD: operator.add,
+        }
+        assert self.operator in funcs, self.operator
+        return _Int(funcs[self.operator](self.lhs.eval(scope).value, self.rhs.eval(scope).value))
+
+
 def _load_expr(input: str) -> _Expr:
     def load_int(scope: parser.Scope[_Expr], state: lexer.TokenStream) -> parser.StateAndResult[_Expr]:
         state, value = parser.get_token_value(state, 'int')
@@ -68,6 +90,12 @@ def _load_expr(input: str) -> _Expr:
     def load_ref(scope: parser.Scope[_Expr], state: lexer.TokenStream) -> parser.StateAndResult[_Expr]:
         state, value = parser.get_token_value(state, 'id')
         return state, _Ref(value)
+
+    def load_operation(scope: parser.Scope[_Expr], state: lexer.TokenStream) -> parser.StateAndResult[_Expr]:
+        state, lhs = parser.Ref[_Expr]('operand')(scope, state)
+        state, operator = parser.get_token_value(state, 'operator')
+        state, rhs = parser.Ref[_Expr]('operand')(scope, state)
+        return state, _Operation(_Operation.Operator[operator], lhs, rhs)
 
     _, lexer_result = lexer.Lexer(
         int=lexer.ReOneOrMore(
@@ -79,10 +107,19 @@ def _load_expr(input: str) -> _Expr:
                 lexer.ReRange('A', 'Z'),
             ])
         ),
+        operator=lexer.ReOr([
+            lexer.ReLiteral(operator.value)
+            for operator in _Operation.Operator
+        ]),
     )(lexer.Scope({}), lexer.load_char_stream(input))
 
     parser_state, parser_result = parser.Parser(
         expr=parser.Or[_Expr]([
+            parser.Ref[_Expr]('operation'),
+            parser.Ref[_Expr]('operand'),
+        ]),
+        operation=load_operation,
+        operand=parser.Or[_Expr]([
             parser.Ref[_Expr]('int'),
             parser.Ref[_Expr]('ref'),
         ]),
@@ -101,6 +138,14 @@ class LoadTest(unittest.TestCase):
         for input, expr in list[Tuple[str, _Expr]]([
             ('1', _Literal(_Int(1))),
             ('a', _Ref('a')),
+            (
+                '1 + 2',
+                _Operation(
+                    _Operation.Operator.ADD,
+                    _Literal(_Int(1)),
+                    _Literal(_Int(2)),
+                ),
+            ),
         ]):
             with self.subTest(input=input, expr=expr):
                 self.assertEqual(_load_expr(input), expr)
@@ -109,6 +154,7 @@ class LoadTest(unittest.TestCase):
         for input, val in list[Tuple[str, _Int]]([
             ('1', _Int(1)),
             ('a', _Int(1)),
+            ('1 + 2', _Int(3)),
         ]):
             with self.subTest(input=input, val=val):
                 self.assertEqual(
