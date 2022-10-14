@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import MutableSequence, Sequence
+from typing import MutableSequence, Sequence, overload
 from . import processor, stream, regex
 
 
@@ -95,3 +95,16 @@ class Lexer(processor.Processor[CharStream, TokenStream]):
             },
             _ROOT_RULE_NAME,
         )
+
+    @overload
+    def __call__(self, scope: Scope, state: CharStream) -> StateAndResult:
+        ...
+
+    @overload
+    def __call__(self, scope: Scope, state: str) -> StateAndResult:
+        ...
+
+    def __call__(self, scope: Scope, state: CharStream | str) -> StateAndResult:
+        if isinstance(state, str):
+            state = load_char_stream(state)
+        return super().__call__(scope, state)

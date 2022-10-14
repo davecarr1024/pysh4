@@ -5,7 +5,7 @@ from . import lexer
 
 class LexerTest(unittest.TestCase):
     def test_apply(self):
-        for lexer_, input, expected_result in list[Tuple[lexer.Rule, str, lexer.TokenStream]]([
+        for lexer_, input, expected_result in list[Tuple[lexer.Lexer, str, lexer.TokenStream]]([
             (
                 lexer.Lexer(
                     r=lexer.ReLiteral('a'),
@@ -31,7 +31,7 @@ class LexerTest(unittest.TestCase):
         ]):
             with self.subTest(lexer_=lexer_, input=input, expected_result=expected_result):
                 state, actual_result = lexer_(
-                    lexer.Scope({}), lexer.load_char_stream(input))
+                    lexer.Scope({}), input)
                 self.assertEqual(len(state), 0)
                 self.assertEqual(actual_result, expected_result)
 

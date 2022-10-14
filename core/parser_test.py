@@ -111,7 +111,7 @@ def _load_expr(input: str) -> _Expr:
             lexer.ReLiteral(operator.value)
             for operator in _Operation.Operator
         ]),
-    )(lexer.Scope({}), lexer.load_char_stream(input))
+    )(lexer.Scope({}), input)
 
     parser_state, parser_result = parser.Parser(
         expr=parser.Or[_Expr]([
