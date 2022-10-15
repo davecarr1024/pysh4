@@ -80,6 +80,8 @@ class _Regex:
     def __call__(self, scope: Scope, state: CharStream) -> StateAndResult:
         position = state.head.position
         state, token = self.rule(regex.Scope[Char]({}), state)
+        if self.name.startswith('_'):
+            return state, TokenStream()
         return state, TokenStream([Token(token.value, self.name, position)])
 
 

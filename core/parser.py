@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple, TypeVar
+from typing import Tuple, TypeVar, overload
 from . import errors, lexer, processor, stream
 
 _Result = TypeVar('_Result')
@@ -21,13 +21,22 @@ NaryRule = processor.NaryRule[lexer.TokenStream, _Result]
 ResultCombiner = processor.ResultCombiner[_Result]
 
 
-@dataclass(frozen=True, init=False)
+@dataclass(frozen=True)
 class Parser(processor.Processor[lexer.TokenStream, _Result]):
-    def __init__(self, **rules: Rule[_Result]):
-        super().__init__(
-            rules,
-            list(rules.keys())[0]
-        )
+    lexer_: lexer.Lexer
+
+    @overload
+    def __call__(self, scope: Scope[_Result], state: lexer.TokenStream) -> StateAndResult[_Result]:
+        ...
+
+    @overload
+    def __call__(self, scope: Scope[_Result], state: str) -> StateAndResult[_Result]:
+        ...
+
+    def __call__(self, scope: Scope[_Result], state: lexer.TokenStream | str) -> StateAndResult[_Result]:
+        if isinstance(state, str):
+            _, state = self.lexer_(lexer.Scope({}), state)
+        return super().__call__(scope, state)
 
 
 def get_token_value(state: lexer.TokenStream, rule_name: str) -> Tuple[lexer.TokenStream, str]:

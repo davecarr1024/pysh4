@@ -95,38 +95,41 @@ def _load_expr(input: str) -> _Expr:
         state, lhs = parser.Ref[_Expr]('operand')(scope, state)
         state, operator = parser.get_token_value(state, 'operator')
         state, rhs = parser.Ref[_Expr]('operand')(scope, state)
-        return state, _Operation(_Operation.Operator[operator], lhs, rhs)
+        return state, _Operation(_Operation.Operator(operator), lhs, rhs)
 
-    _, lexer_result = lexer.Lexer(
-        int=lexer.ReOneOrMore(
-            lexer.ReClass(string.digits)),
-        id=lexer.ReOneOrMore(
-            lexer.ReOr([
-                lexer.ReLiteral('_'),
-                lexer.ReRange('a', 'z'),
-                lexer.ReRange('A', 'Z'),
-            ])
-        ),
-        operator=lexer.ReOr([
-            lexer.ReLiteral(operator.value)
-            for operator in _Operation.Operator
-        ]),
-    )(lexer.Scope({}), input)
+    parser_state, parser_result = parser.Parser[_Expr](
+        {
+            'expr': parser.Or[_Expr]([
+                parser.Ref[_Expr]('operation'),
+                parser.Ref[_Expr]('operand'),
+            ]),
+            'operation': load_operation,
+            'operand': parser.Or[_Expr]([
+                parser.Ref[_Expr]('int'),
+                parser.Ref[_Expr]('ref'),
+            ]),
+            'int': load_int,
+            'ref': load_ref,
+        },
+        'expr',
+        lexer.Lexer(
+            _ws=lexer.ReClass(string.whitespace),
+            int=lexer.ReOneOrMore(
+                lexer.ReClass(string.digits)),
+            id=lexer.ReOneOrMore(
+                lexer.ReOr([
+                    lexer.ReLiteral('_'),
+                    lexer.ReRange('a', 'z'),
+                    lexer.ReRange('A', 'Z'),
+                ])
+            ),
+            operator=lexer.ReOr([
+                lexer.ReLiteral(operator.value)
+                for operator in _Operation.Operator
+            ]),
+        )
 
-    parser_state, parser_result = parser.Parser(
-        expr=parser.Or[_Expr]([
-            parser.Ref[_Expr]('operation'),
-            parser.Ref[_Expr]('operand'),
-        ]),
-        operation=load_operation,
-        operand=parser.Or[_Expr]([
-            parser.Ref[_Expr]('int'),
-            parser.Ref[_Expr]('ref'),
-        ]),
-        int=load_int,
-        ref=load_ref,
-
-    )(parser.Scope[_Expr]({}), lexer_result)
+    )(parser.Scope[_Expr]({}), input)
 
     if not parser_state.empty:
         raise errors.Error(msg=f'leftover state {parser_state}')
