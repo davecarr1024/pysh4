@@ -4,6 +4,7 @@ from . import errors, regex
 
 _Char = regex.Char
 _CharStream = regex.CharStream[_Char]
+_Rule = regex.Rule[_Char]
 _Scope = regex.Scope[_Char]
 _StateAndResult = regex.StateAndResult[_Char]
 _Literal = regex.Literal[_Char]
@@ -415,3 +416,12 @@ class NotTest(unittest.TestCase):
                     regex.Not(
                         _Literal('a')
                     )(_Scope({}), state)
+
+
+class LoadTest(unittest.TestCase):
+    def test_load(self):
+        for input, result in list[Tuple[str, _Rule]]([
+            ('a', _Literal('a')),
+        ]):
+            with self.subTest(input=input, result=result):
+                self.assertEqual(regex.load(input), result)

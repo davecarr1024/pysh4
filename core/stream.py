@@ -52,7 +52,7 @@ _State = TypeVar('_State', bound=Emptyable)
 _Result = TypeVar('_Result')
 
 
-class UntilEmpty(processor.UnaryRule[_State, _Result]):
+class UntilEmpty(processor.UnaryMultipleResultRule[_State, _Result]):
     def __repr__(self) -> str:
         return f'{self.rule}!'
 

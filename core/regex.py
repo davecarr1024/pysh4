@@ -35,6 +35,7 @@ class Token:
 
 RuleError = processor.RuleError[CharStream[_Char], Token]
 Rule = processor.Rule[CharStream[_Char], Token]
+NaryRule = processor.NaryRule[CharStream[_Char], Token]
 MultipleResultRule = processor.MultipleResultRule[CharStream[_Char], Token]
 Scope = processor.Scope[CharStream[_Char], Token]
 StateAndResult = processor.StateAndResult[CharStream[_Char], Token]
@@ -148,3 +149,39 @@ class Range(Generic[_Char]):
             raise RuleError[_Char](
                 rule=self, state=state, msg=f'expected in {self} but got {state.head}')
         return state.tail, Token(state.head.value)
+
+
+def load(input: str) -> Rule[_Char]:
+    from . import lexer, parser
+
+    operators = ''
+
+    def load_root(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
+        state, results = parser.UntilEmpty[Rule[_Char]](
+            parser.Ref[Rule[_Char]]('rule'))(scope, state)
+        if len(results) == 1:
+            return state, results[0]
+        return state, And(results)
+
+    def load_literal(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
+        state, value = parser.get_token_value(state, 'char')
+        return state, Literal[_Char](value)
+
+    _, result = parser.Parser[Rule[_Char]](
+        {
+            'root': load_root,
+            'rule': parser.Or[Rule[_Char]]([
+                load_literal,
+            ]),
+        },
+        'root',
+        lexer.Lexer(
+            char=lexer.ReNot(lexer.ReClass(operators)),
+            **{
+                operator: lexer.ReLiteral(operator)
+                for operator in operators
+            }
+        )
+    )(parser.Scope[Rule[_Char]]({}), input)
+
+    return result
