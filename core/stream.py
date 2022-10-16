@@ -52,13 +52,13 @@ _State = TypeVar('_State', bound=Emptyable)
 _Result = TypeVar('_Result')
 
 
-class UntilEmpty(processor.UnaryRule[_State, _Result], processor.ResultCombiner[_Result]):
+class UntilEmpty(processor.UnaryRule[_State, _Result]):
     def __repr__(self) -> str:
         return f'{self.rule}!'
 
-    def __call__(self, scope: processor.Scope[_State, _Result], state: _State) -> processor.StateAndResult[_State, _Result]:
+    def __call__(self, scope: processor.Scope[_State, _Result], state: _State) -> processor.StateAndMultipleResult[_State, _Result]:
         results: MutableSequence[_Result] = []
         while not state.empty:
             state, result = self.rule(scope, state)
             results.append(result)
-        return state, self.combine_results(results)
+        return state, results

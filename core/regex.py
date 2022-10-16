@@ -35,35 +35,43 @@ class Token:
 
 RuleError = processor.RuleError[CharStream[_Char], Token]
 Rule = processor.Rule[CharStream[_Char], Token]
+MultipleResultRule = processor.MultipleResultRule[CharStream[_Char], Token]
 Scope = processor.Scope[CharStream[_Char], Token]
 StateAndResult = processor.StateAndResult[CharStream[_Char], Token]
 Ref = processor.Ref[CharStream[_Char], Token]
 Or = processor.Or[CharStream[_Char], Token]
 
 
-class _ResultCombiner(processor.ResultCombiner[Token]):
-    def combine_results(self, results: Sequence[Token]) -> Token:
-        return Token.concat(results)
+@dataclass(frozen=True, repr=False)
+class _ResultCombiner(processor.ResultCombiner[CharStream[_Char], Token]):
+    def __call__(self, scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
+        state, results = self.rule(scope, state)
+        return state, Token.concat(results)
 
 
-class And(processor.And[CharStream[_Char], Token], _ResultCombiner):
-    ...
+class And(_ResultCombiner[_Char]):
+    def __init__(self, rules: Sequence[Rule[_Char]]):
+        super().__init__(processor.And[CharStream[_Char], Token](rules))
 
 
-class ZeroOrMore(processor.ZeroOrMore[CharStream[_Char], Token], _ResultCombiner):
-    ...
+class ZeroOrMore(_ResultCombiner[_Char]):
+    def __init__(self, rule: Rule[_Char]):
+        super().__init__(processor.ZeroOrMore[CharStream[_Char], Token](rule))
 
 
-class OneOrMore(processor.OneOrMore[CharStream[_Char], Token], _ResultCombiner):
-    ...
+class OneOrMore(_ResultCombiner[_Char]):
+    def __init__(self, rule: Rule[_Char]):
+        super().__init__(processor.OneOrMore[CharStream[_Char], Token](rule))
 
 
-class ZeroOrOne(processor.ZeroOrOne[CharStream[_Char], Token], _ResultCombiner):
-    ...
+class ZeroOrOne(_ResultCombiner[_Char]):
+    def __init__(self, rule: Rule[_Char]):
+        super().__init__(processor.ZeroOrOne[CharStream[_Char], Token](rule))
 
 
-class UntilEmpty(stream.UntilEmpty[CharStream[_Char], Token], _ResultCombiner):
-    ...
+class UntilEmpty(_ResultCombiner[_Char]):
+    def __init__(self, rule: Rule[_Char]):
+        super().__init__(stream.UntilEmpty[CharStream[_Char], Token](rule))
 
 
 @dataclass(frozen=True, repr=False)

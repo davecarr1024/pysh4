@@ -6,6 +6,7 @@ from . import errors, processor
 _State = Sequence[int]
 _Result = int
 _StateAndResult = processor.StateAndResult[_State, _Result]
+_StateAndMultipleResult = processor.StateAndMultipleResult[_State, _Result]
 _Rule = processor.Rule[_State, _Result]
 _Scope = processor.Scope[_State, _Result]
 
@@ -22,29 +23,15 @@ class Eq:
         return state[1:], state[0]
 
 
-class ResultCombiner(processor.ResultCombiner[_Result]):
-    def combine_results(self, results: Sequence[_Result]) -> _Result:
-        return sum(results)
+@dataclass(frozen=True)
+class _ResultCombiner(processor.ResultCombiner[_State, _Result]):
+    def __call__(self, scope: _Scope, state: _State) -> _StateAndResult:
+        state, results = self.rule(scope, state)
+        return state, sum(results)
 
 
 _Ref = processor.Ref[_State, _Result]
 _Or = processor.Or[_State, _Result]
-
-
-class _And(processor.And[_State, _Result], ResultCombiner):
-    ...
-
-
-class _ZeroOrMore(processor.ZeroOrMore[_State, _Result], ResultCombiner):
-    ...
-
-
-class _OneOrMore(processor.OneOrMore[_State, _Result], ResultCombiner):
-    ...
-
-
-class _ZeroOrOne(processor.ZeroOrOne[_State, _Result], ResultCombiner):
-    ...
 
 
 class EqTest(unittest.TestCase):
@@ -139,13 +126,29 @@ class OrTest(unittest.TestCase):
 
 class AndTest(unittest.TestCase):
     def test_apply(self):
+        for state, output in list[Tuple[_State, _StateAndMultipleResult]]([
+            ([1, 2], ([], [1, 2])),
+            ([1, 2, 3], ([3], [1, 2])),
+        ]):
+            with self.subTest(state=state, output=output):
+                self.assertEqual(
+                    processor.And[_State, _Result](
+                        [Eq(1), Eq(2)])(_Scope({}), state),
+                    output
+                )
+
+    def test_apply_single_result(self):
         for state, output in list[Tuple[_State, _StateAndResult]]([
             ([1, 2], ([], 3)),
             ([1, 2, 3], ([3], 3)),
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _And([Eq(1), Eq(2)])(_Scope({}), state),
+                    _ResultCombiner(
+                        processor.And[_State, _Result](
+                            [Eq(1), Eq(2)]
+                        )
+                    )(_Scope({}), state),
                     output
                 )
 
@@ -158,37 +161,40 @@ class AndTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    _And([Eq(1), Eq(2)])(_Scope({}), state)
+                    processor.And[_State, _Result](
+                        [Eq(1), Eq(2)])(_Scope({}), state)
 
 
 class ZeroOrMoreTest(unittest.TestCase):
     def test_apply(self):
-        for state, output in list[Tuple[_State, _StateAndResult]]([
-            ([], ([], 0)),
-            ([1], ([], 1)),
-            ([1, 1], ([], 2)),
-            ([2], ([2], 0)),
-            ([1, 2], ([2], 1)),
-            ([1, 1, 2], ([2], 2)),
+        for state, output in list[Tuple[_State, _StateAndMultipleResult]]([
+            ([], ([], [])),
+            ([1], ([], [1])),
+            ([1, 1], ([], [1, 1])),
+            ([2], ([2], [])),
+            ([1, 2], ([2], [1])),
+            ([1, 1, 2], ([2], [1, 1])),
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _ZeroOrMore(Eq(1))(_Scope({}), state),
+                    processor.ZeroOrMore[_State, _Result](
+                        Eq(1))(_Scope({}), state),
                     output
                 )
 
 
 class OneOrMoreTest(unittest.TestCase):
     def test_apply(self):
-        for state, output in list[Tuple[_State, _StateAndResult]]([
-            ([1], ([], 1)),
-            ([1, 1], ([], 2)),
-            ([1, 2], ([2], 1)),
-            ([1, 1, 2], ([2], 2)),
+        for state, output in list[Tuple[_State, _StateAndMultipleResult]]([
+            ([1], ([], [1])),
+            ([1, 1], ([], [1, 1])),
+            ([1, 2], ([2], [1])),
+            ([1, 1, 2], ([2], [1, 1])),
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _OneOrMore(Eq(1))(_Scope({}), state),
+                    processor.OneOrMore[_State, _Result](
+                        Eq(1))(_Scope({}), state),
                     output
                 )
 
@@ -199,19 +205,21 @@ class OneOrMoreTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    _OneOrMore(Eq(1))(_Scope({}), state)
+                    processor.OneOrMore[_State, _Result](
+                        Eq(1))(_Scope({}), state)
 
 
 class ZeroOrOneTest(unittest.TestCase):
     def test_apply(self):
-        for state, output in list[Tuple[_State, _StateAndResult]]([
-            ([], ([], 0)),
-            ([1], ([], 1)),
-            ([2], ([2], 0)),
-            ([1, 2], ([2], 1)),
+        for state, output in list[Tuple[_State, _StateAndMultipleResult]]([
+            ([], ([], [])),
+            ([1], ([], [1])),
+            ([2], ([2], [])),
+            ([1, 2], ([2], [1])),
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _ZeroOrOne(Eq(1))(_Scope({}), state),
+                    processor.ZeroOrOne[_State, _Result](
+                        Eq(1))(_Scope({}), state),
                     output
                 )

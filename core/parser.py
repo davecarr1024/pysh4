@@ -18,7 +18,7 @@ ZeroOrOne = processor.ZeroOrOne[lexer.TokenStream, _Result]
 UntilEmpty = stream.UntilEmpty[lexer.TokenStream, _Result]
 UnaryRule = processor.UnaryRule[lexer.TokenStream, _Result]
 NaryRule = processor.NaryRule[lexer.TokenStream, _Result]
-ResultCombiner = processor.ResultCombiner[_Result]
+ResultCombiner = processor.ResultCombiner[lexer.TokenStream, _Result]
 
 
 @dataclass(frozen=True)

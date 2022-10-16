@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import MutableSequence, Sequence, overload
+from typing import MutableSequence, overload
 from . import processor, stream, regex
 
 
@@ -58,13 +58,15 @@ ReClass = regex.Class[Char]
 ReRange = regex.Range[Char]
 
 
-class _ResultCombiner(processor.ResultCombiner[TokenStream]):
-    def combine_results(self, results: Sequence[TokenStream]) -> TokenStream:
-        return sum(results, TokenStream())
+class _ResultCombiner(processor.ResultCombiner[CharStream, TokenStream]):
+    def __call__(self, scope: Scope, state: CharStream) -> StateAndResult:
+        state, results = self.rule(scope, state)
+        return state, sum(results, TokenStream())
 
 
-class _UntilEmpty(stream.UntilEmpty[CharStream, TokenStream], _ResultCombiner):
-    ...
+class _UntilEmpty(_ResultCombiner):
+    def __init__(self, rule: Rule):
+        super().__init__(stream.UntilEmpty[CharStream, TokenStream](rule))
 
 
 _RULE_PREFIX = '_lexer'

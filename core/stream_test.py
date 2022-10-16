@@ -95,6 +95,7 @@ class StreamTest(unittest.TestCase):
 _State = _Stream
 _Result = int
 _StateAndResult = processor.StateAndResult[_State, _Result]
+_StateAndMultipleResult = processor.StateAndMultipleResult[_State, _Result]
 _Rule = processor.Rule[_State, _Result]
 _Scope = processor.Scope[_State, _Result]
 
@@ -138,34 +139,26 @@ class EqTest(unittest.TestCase):
                     eq(1)(_Scope({}), state)
 
 
-class _ResultCombiner(processor.ResultCombiner[_Result]):
-    def combine_results(self, results: Sequence[_Result]) -> _Result:
-        return sum(results)
-
-
-class _UntilEmpty(stream.UntilEmpty[_State, _Result], _ResultCombiner):
-    ...
-
-
 class UntilEmptyTest(unittest.TestCase):
     def test_apply(self):
-        for state, output in list[Tuple[_State, _StateAndResult]]([
+        for state, output in list[Tuple[_State, _StateAndMultipleResult]]([
             (
                 _Stream(),
-                (_Stream([]), 0),
+                (_Stream([]), []),
             ),
             (
                 _Stream([1]),
-                (_Stream([]), 1),
+                (_Stream([]), [1]),
             ),
             (
                 _Stream([1, 1]),
-                (_Stream([]), 2),
+                (_Stream([]), [1, 1]),
             ),
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(
-                    _UntilEmpty(eq(1))(_Scope({}), state),
+                    stream.UntilEmpty[_State, _Result](
+                        eq(1))(_Scope({}), state),
                     output
                 )
 
@@ -176,4 +169,5 @@ class UntilEmptyTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    _UntilEmpty(eq(1))(_Scope({}), state)
+                    stream.UntilEmpty[_State, _Result](
+                        eq(1))(_Scope({}), state)
