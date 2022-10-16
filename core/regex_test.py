@@ -472,6 +472,7 @@ class LoadTest(unittest.TestCase):
         for input in list[str]([
             '\\',
             '\\a',
+            'ab[',
         ]):
             with self.subTest(input=input):
                 with self.assertRaises(errors.Error):
