@@ -452,6 +452,17 @@ class LoadTest(unittest.TestCase):
             ('a', _Literal('a')),
             ('.', _Any()),
             ('[a-z]', _Range('a', 'z')),
+            ('\\w', _Class.whitespace()),
+            ('\\.', _Literal('.')),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(regex.load(input), result)
+
+    def test_load_fail(self):
+        for input in list[str]([
+            '\\',
+            '\\a',
+        ]):
+            with self.subTest(input=input):
+                with self.assertRaises(errors.Error):
+                    regex.load(input)

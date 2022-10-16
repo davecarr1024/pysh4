@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Sequence, TypeVar
+import string
+from typing import Mapping, Sequence, TypeVar
 
 from . import errors, processor, stream
 
@@ -141,6 +142,10 @@ class Class(AbstractRule[_Char]):
                 rule=self, state=state, msg=f'expected {repr(self.values)} but got {state.head}')
         return state.tail, Token(state.head.value)
 
+    @staticmethod
+    def whitespace() -> 'Class[_Char]':
+        return Class[_Char](string.whitespace)
+
 
 @dataclass(frozen=True, repr=False)
 class Range(AbstractRule[_Char]):
@@ -166,7 +171,7 @@ class Range(AbstractRule[_Char]):
 def load(input: str) -> Rule[_Char]:
     from . import lexer, parser
 
-    operators = '.[-]'
+    operators = '.[-]\\'
 
     def load_root(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
         state, results = parser.UntilEmpty[Rule[_Char]](
@@ -191,6 +196,21 @@ def load(input: str) -> Rule[_Char]:
         state = parser.consume_token(state, ']')
         return state, Range[_Char](min, max)
 
+    def load_special(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
+        state = parser.consume_token(state, '\\')
+        if state.empty:
+            raise errors.Error(msg=f'empty stream')
+        value = state.head.value
+        state = state.tail
+        classes: Mapping[str, Class[_Char]] = {
+            'w': Class[_Char].whitespace(),
+        }
+        if value in classes:
+            return state, classes[value]
+        if value in operators:
+            return state, Literal[_Char](value)
+        raise errors.Error(msg=f'unknown special char {value}')
+
     _, result = parser.Parser[Rule[_Char]](
         {
             'root': load_root,
@@ -198,6 +218,7 @@ def load(input: str) -> Rule[_Char]:
                 load_literal,
                 load_any,
                 load_range,
+                load_special,
             ]),
         },
         'root',
