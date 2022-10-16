@@ -418,6 +418,33 @@ class NotTest(unittest.TestCase):
                     )(_Scope({}), state)
 
 
+class AnyTest(unittest.TestCase):
+    def test_apply(self):
+        for state, result in list[Tuple[_CharStream, _StateAndResult]]([
+            (
+                _CharStream([_Char('a')]),
+                (_CharStream(), regex.Token('a')),
+            ),
+            (
+                _CharStream([_Char('a'), _Char('b')]),
+                (_CharStream([_Char('b')]), regex.Token('a')),
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    regex.Any()(_Scope({}), state),
+                    result
+                )
+
+    def test_apply_fail(self):
+        for state in list[_CharStream]([
+            _CharStream(),
+        ]):
+            with self.subTest(state=state):
+                with self.assertRaises(errors.Error):
+                    regex.Any()(_Scope({}), state)
+
+
 class LoadTest(unittest.TestCase):
     def test_load(self):
         for input, result in list[Tuple[str, _Rule]]([

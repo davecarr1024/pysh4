@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Generic, Sequence, TypeVar
+from typing import Sequence, TypeVar
 
 from . import errors, processor, stream
 
@@ -35,6 +35,7 @@ class Token:
 
 RuleError = processor.RuleError[CharStream[_Char], Token]
 Rule = processor.Rule[CharStream[_Char], Token]
+AbstractRule = processor.AbstractRule[CharStream[_Char], Token]
 NaryRule = processor.NaryRule[CharStream[_Char], Token]
 MultipleResultRule = processor.MultipleResultRule[CharStream[_Char], Token]
 Scope = processor.Scope[CharStream[_Char], Token]
@@ -76,7 +77,18 @@ class UntilEmpty(_ResultCombiner[_Char]):
 
 
 @dataclass(frozen=True, repr=False)
-class Literal(Generic[_Char]):
+class Any(AbstractRule[_Char]):
+    def __repr__(self) -> str:
+        return '.'
+
+    def __call__(self, scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
+        if state.empty:
+            raise RuleError[_Char](rule=self, state=state, msg='empty stream')
+        return state.tail, Token(state.head.value)
+
+
+@dataclass(frozen=True, repr=False)
+class Literal(AbstractRule[_Char]):
     value: str
 
     def __post_init__(self):
@@ -110,7 +122,7 @@ class Not(processor.UnaryRule[CharStream[_Char], Token]):
 
 
 @dataclass(frozen=True, repr=False)
-class Class(Generic[_Char]):
+class Class(AbstractRule[_Char]):
     values: Sequence[str]
 
     def __post_init__(self):
@@ -131,7 +143,7 @@ class Class(Generic[_Char]):
 
 
 @dataclass(frozen=True, repr=False)
-class Range(Generic[_Char]):
+class Range(AbstractRule[_Char]):
     min: str
     max: str
 
