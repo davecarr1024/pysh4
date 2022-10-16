@@ -10,6 +10,7 @@ _StateAndResult = regex.StateAndResult[_Char]
 _Literal = regex.Literal[_Char]
 _Class = regex.Class[_Char]
 _Range = regex.Range[_Char]
+_Any = regex.Any[_Char]
 _Or = regex.Or[_Char]
 
 
@@ -432,7 +433,7 @@ class AnyTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, result=result):
                 self.assertEqual(
-                    regex.Any()(_Scope({}), state),
+                    _Any()(_Scope({}), state),
                     result
                 )
 
@@ -442,13 +443,14 @@ class AnyTest(unittest.TestCase):
         ]):
             with self.subTest(state=state):
                 with self.assertRaises(errors.Error):
-                    regex.Any()(_Scope({}), state)
+                    _Any()(_Scope({}), state)
 
 
 class LoadTest(unittest.TestCase):
     def test_load(self):
         for input, result in list[Tuple[str, _Rule]]([
             ('a', _Literal('a')),
+            ('.', _Any()),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(regex.load(input), result)
