@@ -12,6 +12,7 @@ _Class = regex.Class[_Char]
 _Range = regex.Range[_Char]
 _Any = regex.Any[_Char]
 _Or = regex.Or[_Char]
+_And = regex.And[_Char]
 
 
 class CharTest(unittest.TestCase):
@@ -454,6 +455,15 @@ class LoadTest(unittest.TestCase):
             ('[a-z]', _Range('a', 'z')),
             ('\\w', _Class.whitespace()),
             ('\\.', _Literal('.')),
+            (
+                'a.\\w[0-9]',
+                _And([
+                    _Literal('a'),
+                    _Any(),
+                    _Class.whitespace(),
+                    _Range('0', '9'),
+                ])
+            ),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(regex.load(input), result)
