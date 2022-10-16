@@ -451,6 +451,7 @@ class LoadTest(unittest.TestCase):
         for input, result in list[Tuple[str, _Rule]]([
             ('a', _Literal('a')),
             ('.', _Any()),
+            ('[a-z]', _Range('a', 'z')),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(regex.load(input), result)

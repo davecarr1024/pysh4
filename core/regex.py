@@ -166,7 +166,7 @@ class Range(AbstractRule[_Char]):
 def load(input: str) -> Rule[_Char]:
     from . import lexer, parser
 
-    operators = '.'
+    operators = '.[-]'
 
     def load_root(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
         state, results = parser.UntilEmpty[Rule[_Char]](
@@ -183,12 +183,21 @@ def load(input: str) -> Rule[_Char]:
         state = parser.consume_token(state, '.')
         return state, Any[_Char]()
 
+    def load_range(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
+        state = parser.consume_token(state, '[')
+        state, min = parser.get_token_value(state, 'char')
+        state = parser.consume_token(state, '-')
+        state, max = parser.get_token_value(state, 'char')
+        state = parser.consume_token(state, ']')
+        return state, Range[_Char](min, max)
+
     _, result = parser.Parser[Rule[_Char]](
         {
             'root': load_root,
             'rule': parser.Or[Rule[_Char]]([
                 load_literal,
                 load_any,
+                load_range,
             ]),
         },
         'root',
