@@ -464,6 +464,8 @@ class LoadTest(unittest.TestCase):
                     _Range('0', '9'),
                 ])
             ),
+            ('ab', _And([_Literal('a'), _Literal('b')])),
+            ('(ab)', _And([_Literal('a'), _Literal('b')])),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(regex.load(input), result)
