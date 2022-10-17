@@ -12,7 +12,12 @@ _Class = regex.Class[_Char]
 _Range = regex.Range[_Char]
 _Any = regex.Any[_Char]
 _Or = regex.Or[_Char]
+_Not = regex.Not[_Char]
 _And = regex.And[_Char]
+_ZeroOrMore = regex.ZeroOrMore[_Char]
+_OneOrMore = regex.OneOrMore[_Char]
+_ZeroOrOne = regex.ZeroOrOne[_Char]
+_UntilEmpty = regex.UntilEmpty[_Char]
 
 
 class CharTest(unittest.TestCase):
@@ -467,6 +472,11 @@ class LoadTest(unittest.TestCase):
             ('ab', _And([_Literal('a'), _Literal('b')])),
             ('(ab)', _And([_Literal('a'), _Literal('b')])),
             ('(a|b)', _Or([_Literal('a'), _Literal('b')])),
+            ('a*', _ZeroOrMore(_Literal('a'))),
+            ('a+', _OneOrMore(_Literal('a'))),
+            ('a?', _ZeroOrOne(_Literal('a'))),
+            ('a!', _UntilEmpty(_Literal('a'))),
+            ('^a', _Not(_Literal('a'))),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(regex.load(input), result)

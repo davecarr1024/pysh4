@@ -171,7 +171,7 @@ class Range(AbstractRule[_Char]):
 def load(input: str) -> Rule[_Char]:
     from . import lexer, parser
 
-    operators = '.[-]\\()|'
+    operators = '.[-]\\()|*+?!^'
 
     def load_root(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
         state, results = parser.UntilEmpty[Rule[_Char]](
@@ -229,12 +229,44 @@ def load(input: str) -> Rule[_Char]:
         state = parser.consume_token(state, ')')
         return state, Or[_Char]([head] + list(tail))
 
+    def load_zero_or_more(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
+        state, value = parser.Ref[Rule[_Char]]('operand')(scope, state)
+        state = parser.consume_token(state, '*')
+        return state, ZeroOrMore[_Char](value)
+
+    def load_one_or_more(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
+        state, value = parser.Ref[Rule[_Char]]('operand')(scope, state)
+        state = parser.consume_token(state, '+')
+        return state, OneOrMore[_Char](value)
+
+    def load_zero_or_one(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
+        state, value = parser.Ref[Rule[_Char]]('operand')(scope, state)
+        state = parser.consume_token(state, '?')
+        return state, ZeroOrOne[_Char](value)
+
+    def load_until_empty(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
+        state, value = parser.Ref[Rule[_Char]]('operand')(scope, state)
+        state = parser.consume_token(state, '!')
+        return state, UntilEmpty[_Char](value)
+
+    def load_not(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
+        state = parser.consume_token(state, '^')
+        state, value = parser.Ref[Rule[_Char]]('operand')(scope, state)
+        return state, Not[_Char](value)
+
     _, result = parser.Parser[Rule[_Char]](
         {
             'root': load_root,
             'rule': parser.Or[Rule[_Char]]([
-                # parser.Ref[Rule[_Char]]('operation'),
+                parser.Ref[Rule[_Char]]('operation'),
                 parser.Ref[Rule[_Char]]('operand'),
+            ]),
+            'operation': parser.Or[Rule[_Char]]([
+                load_zero_or_more,
+                load_one_or_more,
+                load_zero_or_one,
+                load_until_empty,
+                load_not,
             ]),
             'operand': parser.Or[Rule[_Char]]([
                 load_literal,
