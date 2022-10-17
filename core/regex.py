@@ -171,7 +171,7 @@ class Range(AbstractRule[_Char]):
 def load(input: str) -> Rule[_Char]:
     from . import lexer, parser
 
-    operators = '.[-]\\()'
+    operators = '.[-]\\()|'
 
     def load_root(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
         state, results = parser.UntilEmpty[Rule[_Char]](
@@ -218,6 +218,17 @@ def load(input: str) -> Rule[_Char]:
         state = parser.consume_token(state, ')')
         return state, And[_Char](results)
 
+    def load_or(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
+        def load_part(scope: parser.Scope[Rule[_Char]], state: lexer.TokenStream) -> parser.StateAndResult[Rule[_Char]]:
+            state = parser.consume_token(state, '|')
+            return parser.Ref[Rule[_Char]]('rule')(scope, state)
+
+        state = parser.consume_token(state, '(')
+        state, head = parser.Ref[Rule[_Char]]('rule')(scope, state)
+        state, tail = parser.OneOrMore[Rule[_Char]](load_part)(scope, state)
+        state = parser.consume_token(state, ')')
+        return state, Or[_Char]([head] + list(tail))
+
     _, result = parser.Parser[Rule[_Char]](
         {
             'root': load_root,
@@ -231,6 +242,7 @@ def load(input: str) -> Rule[_Char]:
                 load_range,
                 load_special,
                 load_and,
+                load_or,
             ]),
         },
         'root',
