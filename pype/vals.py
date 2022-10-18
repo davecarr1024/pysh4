@@ -100,9 +100,10 @@ class Scope(MutableMapping[str, Val]):
 
     @property
     def all_vals(self) -> Mapping[str, Val]:
-        vals = dict(self._vals)
+        vals: MutableMapping[str, Val] = {}
         if self.parent is not None:
             vals |= self.parent.all_vals
+        vals |= dict(self.vals)
         return vals
 
     def as_child(self, **vals: Val) -> 'Scope':

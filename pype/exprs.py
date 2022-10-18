@@ -11,8 +11,8 @@ class Expr(ABC):
     def eval(self, scope: vals.Scope) -> vals.Val:
         ...
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
         ...
 
