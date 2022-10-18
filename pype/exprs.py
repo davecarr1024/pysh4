@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterable, Iterator, Sequence, Sized
+from typing import Callable, Iterable, Iterator, Mapping, Sequence, Sized
 from . import errors, vals
 from core import lexer, parser
 
@@ -57,6 +57,11 @@ class Ref(Expr):
             raise errors.Error(f'unknown ref {self.name}')
         return scope[self.name]
 
+    @classmethod
+    def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
+        state, value = parser.get_token_value(state, 'id')
+        return state, Ref(value)
+
 
 @dataclass(frozen=True)
 class Literal(Expr):
@@ -67,6 +72,17 @@ class Literal(Expr):
 
     def eval(self, scope: vals.Scope) -> vals.Val:
         return self.value
+
+    @classmethod
+    def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
+        from . import builtins_
+        token = state.head
+        funcs: Mapping[str, Callable[[str], Expr]] = {
+            'int': lambda value: Literal(builtins_.int_(int(value))),
+            'float': lambda value: Literal(builtins_.float_(float(value))),
+            'str': lambda value: Literal(builtins_.str_(value[1:-1])),
+        }
+        return state.tail, funcs[token.rule_name](token.value)
 
 
 @dataclass(frozen=True)
