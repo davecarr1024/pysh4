@@ -1,6 +1,5 @@
 from dataclasses import dataclass
+from core import errors
 
 
-@dataclass(frozen=True)
-class Error(Exception):
-    msg: str
+Error = errors.Error

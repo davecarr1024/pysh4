@@ -6,7 +6,7 @@ from . import errors
 
 class Val(Mapping[str, 'Val']):
     def __call__(self, scope: 'Scope', args: 'Args') -> 'Val':
-        raise errors.Error(f'calling uncallable {self}')
+        raise errors.Error(msg=f'calling uncallable {self}')
 
     @property
     def members(self) -> 'Scope':
@@ -17,7 +17,7 @@ class Val(Mapping[str, 'Val']):
         return False
 
     def bind(self, object_: 'Val') -> 'Val':
-        raise errors.Error(f'binding unbindable {self}')
+        raise errors.Error(msg=f'binding unbindable {self}')
 
     def __contains__(self, name: object) -> bool:
         return object in self.members
@@ -30,7 +30,7 @@ class Val(Mapping[str, 'Val']):
 
     def __getitem__(self, name: str) -> 'Val':
         if name not in self.members:
-            raise errors.Error(f'unknown member {name}')
+            raise errors.Error(msg=f'unknown member {name}')
         return self.members[name]
 
 
@@ -79,7 +79,7 @@ class Scope(MutableMapping[str, Val]):
             return self._vals[name]
         if self.parent is not None:
             return self.parent[name]
-        raise errors.Error(f'unknown var {name}')
+        raise errors.Error(msg=f'unknown var {name}')
 
     def __setitem__(self, name: str, val: Val) -> None:
         self._vals[name] = val
@@ -89,7 +89,7 @@ class Scope(MutableMapping[str, Val]):
             del self._vals[name]
         if self.parent is not None:
             del self.parent[name]
-        raise errors.Error(f'unknown var {name}')
+        raise errors.Error(msg=f'unknown var {name}')
 
     def __len__(self) -> int:
         return len(self.all_vals)
@@ -195,5 +195,5 @@ class Object(Val, ABC):
 
     def __call__(self, scope: Scope, args: Args) -> Val:
         if '__call__' not in self:
-            raise errors.Error(f'object {self} not callable')
+            raise errors.Error(msg=f'object {self} not callable')
         return self['__call__'](scope, args)

@@ -65,7 +65,7 @@ class _IntFunc(_Func, ABC):
     @staticmethod
     def _int_arg(arg: vals.Val) -> IntObject:
         if not isinstance(arg, IntObject):
-            raise errors.Error(f'invalid int func arg {arg}')
+            raise errors.Error(msg=f'invalid int func arg {arg}')
         return arg
 
     def apply(self, scope: vals.Scope, args: vals.Scope) -> vals.Val:
@@ -107,7 +107,7 @@ class _FloatFunc(_Func, ABC):
     @staticmethod
     def _float_arg(arg: vals.Val) -> FloatObject:
         if not isinstance(arg, FloatObject):
-            raise errors.Error(f'invalid float func arg {arg}')
+            raise errors.Error(msg=f'invalid float func arg {arg}')
         return arg
 
     def apply(self, scope: vals.Scope, args: vals.Scope) -> vals.Val:
@@ -149,7 +149,7 @@ class _StrFunc(_Func, ABC):
     @staticmethod
     def _str_arg(arg: vals.Val) -> StrObject:
         if not isinstance(arg, StrObject):
-            raise errors.Error(f'invalid str func arg {arg}')
+            raise errors.Error(msg=f'invalid str func arg {arg}')
         return arg
 
     def apply(self, scope: vals.Scope, args: vals.Scope) -> vals.Val:
@@ -188,7 +188,7 @@ class _BoolFunc(_Func, ABC):
     @staticmethod
     def _bool_arg(arg: vals.Val) -> BoolObject:
         if not isinstance(arg, BoolObject):
-            raise errors.Error(f'invalid bool func arg {arg}')
+            raise errors.Error(msg=f'invalid bool func arg {arg}')
         return arg
 
     def apply(self, scope: vals.Scope, args: vals.Scope) -> vals.Val:

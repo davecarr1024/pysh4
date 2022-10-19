@@ -4,15 +4,28 @@ from . import builtins_, errors, vals, exprs
 from core import lexer, parser
 
 
-class Arg(unittest.TestCase):
+class ArgTest(unittest.TestCase):
     def test_eval(self):
         self.assertEqual(
             exprs.Arg(exprs.Literal(builtins_.int_(1))).eval(vals.Scope({})),
             vals.Arg(builtins_.int_(1))
         )
 
+    def test_load(self):
+        self.assertEqual(
+            exprs.Arg.load(
+                parser.Scope[exprs.Expr]({
+                    'expr': exprs.Literal.load,
+                }),
+                lexer.TokenStream([
+                    lexer.Token('1', 'int', lexer.Position(0, 0)),
+                ])
+            ),
+            (lexer.TokenStream(), exprs.Arg(exprs.Literal(builtins_.int_(1)))),
+        )
 
-class Args(unittest.TestCase):
+
+class ArgsTest(unittest.TestCase):
     def test_eval(self):
         self.assertEqual(
             exprs.Args([
@@ -25,27 +38,26 @@ class Args(unittest.TestCase):
             ])
         )
 
-
-class Ref(unittest.TestCase):
-    def test_eval(self):
-        self.assertEqual(
-            exprs.Ref('a').eval(vals.Scope({'a': builtins_.int_(1)})),
-            builtins_.int_(1)
-        )
-
-    def test_eval_fail(self):
-        with self.assertRaises(errors.Error):
-            exprs.Ref('a').eval(vals.Scope({}))
-
     def test_load(self):
-        self.assertEqual(
-            exprs.Ref.load(
-                parser.Scope[exprs.Expr]({}),
-                lexer.TokenStream(
-                    [lexer.Token('a', 'id', lexer.Position(0, 0))]),
+        for state, result in list[Tuple[lexer.TokenStream, Tuple[lexer.TokenStream, exprs.Args]]]([
+            (
+                lexer.TokenStream([
+                    lexer.Token('(', '(', lexer.Position(0, 0)),
+                    lexer.Token(')', ')', lexer.Position(0, 0)),
+                ]),
+                (lexer.TokenStream(), exprs.Args([])),
             ),
-            (lexer.TokenStream([]), exprs.Ref('a'))
-        )
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    exprs.Args.load(
+                        parser.Scope[exprs.Expr]({
+                            'expr': exprs.Literal.load,
+                        }),
+                        state
+                    ),
+                    result
+                )
 
 
 class LiteralTest(unittest.TestCase):
