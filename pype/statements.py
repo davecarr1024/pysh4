@@ -55,12 +55,19 @@ class Block(Iterable[Statement], Sized):
 
 @dataclass(frozen=True)
 class Assignment(Statement):
-    name: str
+    ref: exprs.Ref
     value: exprs.Expr
 
     def eval(self, scope: vals.Scope) -> Result:
-        scope[self.name] = self.value.eval(scope)
+        self.ref.assign(scope, self.value.eval(scope))
         return Result()
+
+    @classmethod
+    def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
+        state, ref = exprs.Ref.load(exprs.Expr.default_scope(), state)
+        state = parser.consume_token(state, '=')
+        state, value = exprs.Expr.load_state(state)
+        return state, Assignment(ref, value)
 
 
 @dataclass(frozen=True)

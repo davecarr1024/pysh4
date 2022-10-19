@@ -33,3 +33,32 @@ class ExprTest(unittest.TestCase):
                 )
             )
         )
+
+
+class AssignmentTest(unittest.TestCase):
+    def test_eval(self):
+        scope = vals.Scope({})
+        statements.Assignment(
+            exprs.ref('a'),
+            exprs.literal(builtins_.int_(1))
+        ).eval(scope)
+        self.assertEqual(scope['a'], builtins_.int_(1))
+
+    def test_load(self):
+        self.assertEqual(
+            statements.Assignment.load(
+                statements.Statement.default_scope(),
+                lexer.TokenStream([
+                    _tok('a', 'id'),
+                    _tok('='),
+                    _tok('1', 'int'),
+                ])
+            ),
+            (
+                lexer.TokenStream(),
+                statements.Assignment(
+                    exprs.ref('a'),
+                    exprs.literal(builtins_.int_(1)),
+                ),
+            )
+        )

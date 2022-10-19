@@ -237,7 +237,7 @@ class Ref(Expr):
             self.tail[-1].assign(scope, object_, value)
 
     @classmethod
-    def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
+    def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Ref']:
         state, head = Ref.Head.load(parser.Scope[Ref.Head]({}), state)
         state, tail = Ref.Tail.load(scope, state)
         return state, Ref(head, tail)
