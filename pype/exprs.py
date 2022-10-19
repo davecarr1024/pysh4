@@ -108,7 +108,7 @@ class Ref(Expr):
 
         @classmethod
         @abstractmethod
-        def load(cls, scope: parser.Scope['Ref.Part'], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Part']:
+        def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Part']:
             ...
 
     @dataclass(frozen=True)
@@ -123,6 +123,12 @@ class Ref(Expr):
                 raise errors.Error(
                     msg=f'unknown member {self.name} in object {object_}')
             return object_[self.name]
+
+        @classmethod
+        def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Part']:
+            state = parser.consume_token(state, '.')
+            state, value = parser.get_token_value(state, 'id')
+            return state, Ref.Member(value)
 
     @dataclass(frozen=True)
     class Call(Part):

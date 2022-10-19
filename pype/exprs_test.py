@@ -163,3 +163,31 @@ class LiteralTest(unittest.TestCase):
                     exprs.Literal.load(parser.Scope[exprs.Expr]({}), state),
                     result
                 )
+
+
+class RefTest(unittest.TestCase):
+    def test_member_eval(self):
+        self.assertEqual(
+            exprs.Ref.Member('a').eval(
+                vals.Scope({}),
+                vals.Class(
+                    'c',
+                    vals.Scope({
+                        'a': builtins_.int_(1),
+                    })
+                )
+            ),
+            builtins_.int_(1)
+        )
+
+    def test_member_load(self):
+        self.assertEqual(
+            exprs.Ref.Member.load(
+                parser.Scope[exprs.Expr]({}),
+                lexer.TokenStream([
+                    lexer.Token('.', '.', lexer.Position(0, 0)),
+                    lexer.Token('a', 'id', lexer.Position(0, 0)),
+                ])
+            ),
+            (lexer.TokenStream(), exprs.Ref.Member('a'))
+        )

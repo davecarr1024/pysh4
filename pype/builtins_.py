@@ -43,12 +43,14 @@ class _Func(funcs.AbstractFunc, ABC):
 _Value = TypeVar('_Value')
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class _ValueObject(_Object, Generic[_Value]):
     value: _Value
 
+    def __repr__(self) -> str:
+        return repr(self.value)
 
-@dataclass(frozen=True)
+
 class IntObject(_ValueObject[int]):
     ...
 

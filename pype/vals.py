@@ -20,7 +20,7 @@ class Val(Mapping[str, 'Val']):
         raise errors.Error(msg=f'binding unbindable {self}')
 
     def __contains__(self, name: object) -> bool:
-        return object in self.members
+        return name in self.members
 
     def __len__(self) -> int:
         return len(self.members)
@@ -59,14 +59,14 @@ class Args(Iterable[Arg], Sized):
         return Args([arg] + list(self._args))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Scope(MutableMapping[str, Val]):
     parent: Optional['Scope'] = field(
         default=None, compare=False, kw_only=True)
     _vals: MutableMapping[str, Val] = field(default_factory=dict[str, Val])
 
-    def __str__(self) -> str:
-        return str(self._vals)
+    def __repr__(self) -> str:
+        return repr(self.all_vals)
 
     def __iter__(self) -> Iterator[str]:
         return iter(self.all_vals)
