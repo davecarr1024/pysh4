@@ -6,7 +6,7 @@ from . import errors, funcs, params, vals
 
 
 @dataclass(frozen=True)
-class Class(vals.AbstractClass):
+class _Class(vals.AbstractClass):
     _name: str
     _members: vals.Scope
     __object_type: Type['_Object']
@@ -76,7 +76,7 @@ class _IntFunc(_Func, ABC):
         return int_(self.func(self_, rhs))
 
 
-IntClass = Class(
+IntClass = _Class(
     'int',
     vals.Scope({
         '__add__': funcs.BindableFunc(_IntFunc('__add__', operator.add)),
@@ -92,9 +92,12 @@ def int_(value: int) -> vals.Object:
     return IntClass.instantiate(value)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class FloatObject(_ValueObject[float]):
     '''float builtin'''
+
+    def __eq__(self, rhs: 'FloatObject') -> bool:
+        return abs(self.value - rhs.value) < 1e-5
 
 
 @dataclass(frozen=True)
@@ -118,7 +121,7 @@ class _FloatFunc(_Func, ABC):
         return float_(self.func(self_, rhs))
 
 
-FloatClass = Class(
+FloatClass = _Class(
     'float',
     vals.Scope({
         '__add__': funcs.BindableFunc(_FloatFunc('__add__', operator.add)),
@@ -160,7 +163,7 @@ class _StrFunc(_Func, ABC):
         return str_(self.func(self_, rhs))
 
 
-StrClass = Class(
+StrClass = _Class(
     'str',
     vals.Scope({
         '__add__': funcs.BindableFunc(_StrFunc('__add__', operator.add)),
@@ -199,7 +202,7 @@ class _BoolFunc(_Func, ABC):
         return bool_(self.func(self_, rhs))
 
 
-BoolClass = Class(
+BoolClass = _Class(
     'bool',
     vals.Scope({
         '__and__': funcs.BindableFunc(_BoolFunc('__and__', operator.and_)),
@@ -221,7 +224,7 @@ class NoneObject(_Object):
     '''none builtin'''
 
 
-NoneClass = Class(
+NoneClass = _Class(
     'NoneType',
     vals.Scope({}),
     NoneObject,

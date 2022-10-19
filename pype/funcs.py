@@ -21,7 +21,7 @@ class BindableFunc(AbstractFunc):
     def __post_init__(self):
         if len(self.func.params) == 0:
             raise errors.Error(
-                f'unable to create bindable func from func {self.func} with 0 params')
+                msg=f'unable to create bindable func from func {self.func} with 0 params')
 
     @property
     def params(self) -> params.Params:
@@ -46,7 +46,7 @@ class BoundFunc(AbstractFunc):
     def __post_init__(self):
         if len(self.func.params) == 0:
             raise errors.Error(
-                f'unable to bind func {self.func} with 0 params')
+                msg=f'unable to bind func {self.func} with 0 params')
 
     @property
     def params(self) -> params.Params:
