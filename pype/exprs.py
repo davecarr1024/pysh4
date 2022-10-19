@@ -92,6 +92,10 @@ class Ref(Expr):
         def eval(self, scope: vals.Scope, object_: vals.Val) -> vals.Val:
             ...
 
+        @abstractmethod
+        def assign(self, scope: vals.Scope, object_: vals.Val, value: vals.Val) -> None:
+            ...
+
         @classmethod
         @abstractmethod
         def loader(cls, scope: parser.Scope[Expr]) -> parser.Rule['Ref.Tail']:
@@ -117,6 +121,9 @@ class Ref(Expr):
                     msg=f'unknown member {self.name} in object {object_}')
             return object_[self.name]
 
+        def assign(self, scope: vals.Scope, object_: vals.Val, value: vals.Val) -> None:
+            object_[self.name] = value
+
         @classmethod
         def loader(cls, scope: parser.Scope[Expr]) -> parser.Rule['Ref.Tail']:
             def inner(_: parser.Scope[Ref.Tail], state: lexer.TokenStream) -> parser.StateAndResult[Ref.Tail]:
@@ -135,6 +142,9 @@ class Ref(Expr):
         def eval(self, scope: vals.Scope, object_: vals.Val) -> vals.Val:
             return object_(scope, self.args.eval(scope))
 
+        def assign(self, scope: vals.Scope, object_: vals.Val, value: vals.Val) -> None:
+            raise errors.Error(msg=f'call {self} is not assignable')
+
         @classmethod
         def loader(cls, scope: parser.Scope[Expr]) -> parser.Rule['Ref.Tail']:
             def inner(_: parser.Scope[Ref.Tail], state: lexer.TokenStream) -> parser.StateAndResult[Ref.Tail]:
@@ -145,6 +155,10 @@ class Ref(Expr):
     class Head(ABC):
         @abstractmethod
         def eval(self, scope: vals.Scope) -> vals.Val:
+            ...
+
+        @abstractmethod
+        def assign(self, scope: vals.Scope, value: vals.Val) -> None:
             ...
 
         @classmethod
@@ -164,6 +178,9 @@ class Ref(Expr):
                 raise errors.Error(msg=f'unknown name {self.name}')
             return scope[self.name]
 
+        def assign(self, scope: vals.Scope, value: vals.Val) -> None:
+            scope[self.name] = value
+
         @classmethod
         def load(cls, scope: parser.Scope['Ref.Head'], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Head']:
             state, value = parser.get_token_value(state, 'id')
@@ -175,6 +192,9 @@ class Ref(Expr):
 
         def eval(self, scope: vals.Scope) -> vals.Val:
             return self.value
+
+        def assign(self, scope: vals.Scope, value: vals.Val) -> None:
+            raise errors.Error(msg=f'literal {self} is not assignable')
 
         @staticmethod
         def load_value(state: lexer.TokenStream) -> parser.StateAndResult[vals.Val]:
@@ -196,16 +216,25 @@ class Ref(Expr):
             return state, Ref.Literal(value)
 
     head: Head
-    parts: Sequence[Tail] = field(default_factory=list[Tail])
+    tail: Sequence[Tail] = field(default_factory=list[Tail])
 
     def __repr__(self) -> str:
-        return repr(self.head) + ''.join(repr(part) for part in self.parts)
+        return repr(self.head) + ''.join(repr(part) for part in self.tail)
 
     def eval(self, scope: vals.Scope) -> vals.Val:
         object_ = self.head.eval(scope)
-        for part in self.parts:
+        for part in self.tail:
             object_ = part.eval(scope, object_)
         return object_
+
+    def assign(self, scope: vals.Scope, value: vals.Val) -> None:
+        if len(self.tail) == 0:
+            self.head.assign(scope, value)
+        else:
+            object_ = self.head.eval(scope)
+            for part in self.tail[:-1]:
+                object_ = part.eval(scope, object_)
+            self.tail[-1].assign(scope, object_, value)
 
     @classmethod
     def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:

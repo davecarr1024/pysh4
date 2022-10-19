@@ -150,6 +150,11 @@ class RefTest(unittest.TestCase):
             builtins_.int_(1)
         )
 
+    def test_member_assign(self):
+        c = vals.Class('c', vals.Scope({}))
+        exprs.Ref.Member('a').assign(vals.Scope({}), c, builtins_.int_(1))
+        self.assertEqual(c['a'], builtins_.int_(1))
+
     def test_member_load(self):
         self.assertEqual(
             exprs.Ref.Member.loader(
@@ -174,6 +179,11 @@ class RefTest(unittest.TestCase):
                 vals.Scope({})
             )
         )
+
+    def test_call_assign(self):
+        with self.assertRaises(errors.Error):
+            exprs.Ref.Call(exprs.Args([])).assign(
+                vals.Scope({}), builtins_.none, builtins_.none)
 
     def test_call_load(self):
         self.assertEqual(
@@ -259,6 +269,11 @@ class RefTest(unittest.TestCase):
             builtins_.int_(1)
         )
 
+    def test_name_head_assign(self):
+        scope = vals.Scope({})
+        exprs.ref('a').assign(scope, builtins_.int_(1))
+        self.assertEqual(scope, vals.Scope({'a': builtins_.int_(1)}))
+
     def test_name_head_load(self):
         self.assertEqual(
             exprs.Ref.Name.load(
@@ -275,6 +290,11 @@ class RefTest(unittest.TestCase):
             exprs.Ref.Literal(builtins_.int_(1)).eval(vals.Scope({})),
             builtins_.int_(1)
         )
+
+    def test_literal_head_assign(self):
+        with self.assertRaises(errors.Error):
+            exprs.literal(builtins_.int_(1)).assign(
+                vals.Scope({}), builtins_.none)
 
     def test_literal_head_load(self):
         self.assertEqual(
@@ -352,6 +372,24 @@ class RefTest(unittest.TestCase):
                     })),
                     result
                 )
+
+    def test_assign(self):
+        scope = vals.Scope({'c': vals.Class('c', vals.Scope({}))})
+        exprs.Ref(
+            exprs.Ref.Name('c'),
+            [exprs.Ref.Member('a')]
+        ).assign(scope, builtins_.int_(1))
+        self.assertEqual(
+            scope,
+            vals.Scope({
+                'c': vals.Class(
+                    'c',
+                    vals.Scope({
+                        'a': builtins_.int_(1),
+                    })
+                )
+            })
+        )
 
     def test_load(self):
         for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[exprs.Ref]]]([

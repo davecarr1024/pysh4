@@ -4,7 +4,7 @@ from typing import Any, Iterable, Iterator, Mapping, MutableMapping, Optional, S
 from . import errors
 
 
-class Val(Mapping[str, 'Val']):
+class Val(MutableMapping[str, 'Val']):
     def __call__(self, scope: 'Scope', args: 'Args') -> 'Val':
         raise errors.Error(msg=f'calling uncallable {self}')
 
@@ -32,6 +32,12 @@ class Val(Mapping[str, 'Val']):
         if name not in self.members:
             raise errors.Error(msg=f'unknown member {name}')
         return self.members[name]
+
+    def __setitem__(self, name: str, value: 'Val') -> None:
+        self.members[name] = value
+
+    def __delitem__(self, name: str) -> None:
+        del self.members[name]
 
 
 @dataclass(frozen=True)
