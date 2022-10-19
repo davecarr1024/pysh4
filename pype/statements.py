@@ -67,6 +67,7 @@ class Assignment(Statement):
         state, ref = exprs.Ref.load(exprs.Expr.default_scope(), state)
         state = parser.consume_token(state, '=')
         state, value = exprs.Expr.load_state(state)
+        state = parser.consume_token(state, ';')
         return state, Assignment(ref, value)
 
 
@@ -87,12 +88,23 @@ class Expr(Statement):
 
 @dataclass(frozen=True)
 class Return(Statement):
-    value: Optional[exprs.Expr]
+    value: Optional[exprs.Expr] = None
 
     def eval(self, scope: vals.Scope) -> Result:
         if self.value is not None:
             return Result(return_=Result.Return(self.value.eval(scope)))
         return Result(return_=Result.Return())
+
+    @classmethod
+    def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
+        state = parser.consume_token(state, 'return')
+        state, values = parser.ZeroOrOne[exprs.Expr](
+            exprs.Expr.load)(exprs.Expr.default_scope(), state)
+        state = parser.consume_token(state, ';')
+        if values:
+            return state, Return(values[0])
+        else:
+            return state, Return()
 
 
 @dataclass(frozen=True)

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 import unittest
 from core import lexer, parser
 from . import builtins_, exprs, errors, statements, vals
@@ -52,6 +52,7 @@ class AssignmentTest(unittest.TestCase):
                     _tok('a', 'id'),
                     _tok('='),
                     _tok('1', 'int'),
+                    _tok(';'),
                 ])
             ),
             (
@@ -62,3 +63,60 @@ class AssignmentTest(unittest.TestCase):
                 ),
             )
         )
+
+
+class ReturnTest(unittest.TestCase):
+    def test_eval(self):
+        for return_, result in list[Tuple[statements.Return, statements.Result]]([
+            (
+                statements.Return(),
+                statements.Result(
+                    return_=statements.Result.Return(),
+                )
+            ),
+            (
+                statements.Return(exprs.literal(builtins_.int_(1))),
+                statements.Result(
+                    return_=statements.Result.Return(
+                        builtins_.int_(1)
+                    ),
+                )
+            ),
+        ]):
+            with self.subTest(return_=return_, result=result):
+                self.assertEqual(
+                    return_.eval(vals.Scope({})),
+                    result
+                )
+
+    def test_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[statements.Return]]]([
+            (
+                lexer.TokenStream([
+                    _tok('return'),
+                    _tok(';'),
+                ]),
+                (lexer.TokenStream(), statements.Return()),
+            ),
+            (
+                lexer.TokenStream([
+                    _tok('return'),
+                    _tok('1', 'int'),
+                    _tok(';'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    statements.Return(
+                        exprs.literal(builtins_.int_(1))
+                    ),
+                ),
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    statements.Return.load(
+                        statements.Statement.default_scope(),
+                        state
+                    ),
+                    result
+                )
