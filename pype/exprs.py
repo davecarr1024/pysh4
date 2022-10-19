@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Iterable, Iterator, Mapping, MutableSequence, Sequence, Sized
+from typing import Callable, Iterable, Iterator, Mapping, Sequence, Sized
 from . import errors, vals
 from core import lexer, parser
 
@@ -106,6 +106,11 @@ class Ref(Expr):
         def eval(self, scope: vals.Scope, object_: vals.Val) -> vals.Val:
             ...
 
+        @classmethod
+        @abstractmethod
+        def load(cls, scope: parser.Scope['Ref.Part'], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Part']:
+            ...
+
     @dataclass(frozen=True)
     class Member(Part):
         name: str
@@ -116,7 +121,7 @@ class Ref(Expr):
         def eval(self, scope: vals.Scope, object_: vals.Val) -> vals.Val:
             if not self.name in object_:
                 raise errors.Error(
-                    f'unknown member {self.name} in object {object_}')
+                    msg=f'unknown member {self.name} in object {object_}')
             return object_[self.name]
 
     @dataclass(frozen=True)

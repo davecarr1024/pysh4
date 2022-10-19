@@ -47,6 +47,54 @@ class ArgsTest(unittest.TestCase):
                 ]),
                 (lexer.TokenStream(), exprs.Args([])),
             ),
+            (
+                lexer.TokenStream([
+                    lexer.Token('(', '(', lexer.Position(0, 0)),
+                    lexer.Token('1', 'int', lexer.Position(0, 0)),
+                    lexer.Token(')', ')', lexer.Position(0, 0)),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.Args([
+                        exprs.Arg(exprs.Literal(builtins_.int_(1))),
+                    ])
+                ),
+            ),
+            (
+                lexer.TokenStream([
+                    lexer.Token('(', '(', lexer.Position(0, 0)),
+                    lexer.Token('1', 'int', lexer.Position(0, 0)),
+                    lexer.Token(',', ',', lexer.Position(0, 0)),
+                    lexer.Token('2', 'int', lexer.Position(0, 0)),
+                    lexer.Token(')', ')', lexer.Position(0, 0)),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.Args([
+                        exprs.Arg(exprs.Literal(builtins_.int_(1))),
+                        exprs.Arg(exprs.Literal(builtins_.int_(2))),
+                    ])
+                ),
+            ),
+            (
+                lexer.TokenStream([
+                    lexer.Token('(', '(', lexer.Position(0, 0)),
+                    lexer.Token('1', 'int', lexer.Position(0, 0)),
+                    lexer.Token(',', ',', lexer.Position(0, 0)),
+                    lexer.Token('2', 'int', lexer.Position(0, 0)),
+                    lexer.Token(',', ',', lexer.Position(0, 0)),
+                    lexer.Token('3', 'int', lexer.Position(0, 0)),
+                    lexer.Token(')', ')', lexer.Position(0, 0)),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.Args([
+                        exprs.Arg(exprs.Literal(builtins_.int_(1))),
+                        exprs.Arg(exprs.Literal(builtins_.int_(2))),
+                        exprs.Arg(exprs.Literal(builtins_.int_(3))),
+                    ])
+                ),
+            ),
         ]):
             with self.subTest(state=state, result=result):
                 self.assertEqual(
@@ -58,6 +106,31 @@ class ArgsTest(unittest.TestCase):
                     ),
                     result
                 )
+
+    def test_load_fail(self):
+        for state in list[lexer.TokenStream]([
+            lexer.TokenStream([
+                lexer.Token('(', '(', lexer.Position(0, 0)),
+                lexer.Token('1', 'int', lexer.Position(0, 0)),
+                lexer.Token(',', ',', lexer.Position(0, 0)),
+                lexer.Token(')', ')', lexer.Position(0, 0)),
+            ]),
+            lexer.TokenStream([
+                lexer.Token('(', '(', lexer.Position(0, 0)),
+                lexer.Token('1', 'int', lexer.Position(0, 0)),
+            ]),
+            lexer.TokenStream([
+                lexer.Token('(', '(', lexer.Position(0, 0)),
+            ]),
+        ]):
+            with self.subTest(state):
+                with self.assertRaises(errors.Error):
+                    exprs.Args.load(
+                        parser.Scope[exprs.Expr]({
+                            'expr': exprs.Literal.load,
+                        }),
+                        state
+                    )
 
 
 class LiteralTest(unittest.TestCase):
