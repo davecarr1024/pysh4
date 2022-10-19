@@ -206,6 +206,10 @@ class Ref(Expr):
         return state, Ref(head, tail)
 
 
+def literal(value: vals.Val) -> Expr:
+    return Ref(Ref.Literal(value))
+
+
 @dataclass(frozen=True)
 class BinaryOperation(Expr):
 
@@ -231,5 +235,4 @@ class BinaryOperation(Expr):
     def eval(self, scope: vals.Scope) -> vals.Val:
         lhs = self.lhs.eval(scope)
         rhs = self.rhs.eval(scope)
-        func = lhs[self._func_for_operator(self.operator)]
-        return func(scope, vals.Args([vals.Arg(rhs)]))
+        return lhs[self._func_for_operator(self.operator)](scope, vals.Args([vals.Arg(rhs)]))

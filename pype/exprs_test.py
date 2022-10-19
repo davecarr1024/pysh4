@@ -4,14 +4,10 @@ from . import builtins_, errors, vals, exprs
 from core import lexer, parser
 
 
-def _literal(value: vals.Val) -> exprs.Ref:
-    return exprs.Ref(exprs.Ref.Literal(value))
-
-
 class ArgTest(unittest.TestCase):
     def test_eval(self):
         self.assertEqual(
-            exprs.Arg(_literal(builtins_.int_(1))).eval(vals.Scope({})),
+            exprs.Arg(exprs.literal(builtins_.int_(1))).eval(vals.Scope({})),
             vals.Arg(builtins_.int_(1))
         )
 
@@ -27,7 +23,7 @@ class ArgTest(unittest.TestCase):
                     lexer.Token('1', 'int', lexer.Position(0, 0)),
                 ])
             ),
-            (lexer.TokenStream(), exprs.Arg(_literal(builtins_.int_(1)))),
+            (lexer.TokenStream(), exprs.Arg(exprs.literal(builtins_.int_(1)))),
         )
 
 
@@ -35,8 +31,8 @@ class ArgsTest(unittest.TestCase):
     def test_eval(self):
         self.assertEqual(
             exprs.Args([
-                exprs.Arg(_literal(builtins_.int_(1))),
-                exprs.Arg(_literal(builtins_.int_(2))),
+                exprs.Arg(exprs.literal(builtins_.int_(1))),
+                exprs.Arg(exprs.literal(builtins_.int_(2))),
             ]).eval(vals.Scope({})),
             vals.Args([
                 vals.Arg(builtins_.int_(1)),
@@ -62,7 +58,7 @@ class ArgsTest(unittest.TestCase):
                 (
                     lexer.TokenStream(),
                     exprs.Args([
-                        exprs.Arg(_literal(builtins_.int_(1))),
+                        exprs.Arg(exprs.literal(builtins_.int_(1))),
                     ])
                 ),
             ),
@@ -77,8 +73,8 @@ class ArgsTest(unittest.TestCase):
                 (
                     lexer.TokenStream(),
                     exprs.Args([
-                        exprs.Arg(_literal(builtins_.int_(1))),
-                        exprs.Arg(_literal(builtins_.int_(2))),
+                        exprs.Arg(exprs.literal(builtins_.int_(1))),
+                        exprs.Arg(exprs.literal(builtins_.int_(2))),
                     ])
                 ),
             ),
@@ -95,9 +91,9 @@ class ArgsTest(unittest.TestCase):
                 (
                     lexer.TokenStream(),
                     exprs.Args([
-                        exprs.Arg(_literal(builtins_.int_(1))),
-                        exprs.Arg(_literal(builtins_.int_(2))),
-                        exprs.Arg(_literal(builtins_.int_(3))),
+                        exprs.Arg(exprs.literal(builtins_.int_(1))),
+                        exprs.Arg(exprs.literal(builtins_.int_(2))),
+                        exprs.Arg(exprs.literal(builtins_.int_(3))),
                     ])
                 ),
             ),
@@ -200,9 +196,9 @@ class RefTest(unittest.TestCase):
             (
                 lexer.TokenStream(),
                 exprs.Ref.Call(exprs.Args([
-                    exprs.Arg(_literal(builtins_.int_(1))),
-                    exprs.Arg(_literal(builtins_.int_(2))),
-                    exprs.Arg(_literal(builtins_.int_(3))),
+                    exprs.Arg(exprs.literal(builtins_.int_(1))),
+                    exprs.Arg(exprs.literal(builtins_.int_(2))),
+                    exprs.Arg(exprs.literal(builtins_.int_(3))),
                 ])),
             )
         )
