@@ -22,7 +22,17 @@ class Statement(ABC):
     @classmethod
     @abstractmethod
     def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
-        ...
+        raise NotImplementedError()
+
+    @staticmethod
+    def default_scope() -> parser.Scope['Statement']:
+        return parser.Scope[Statement]({
+            'statement': Statement.load,
+        })
+
+    @staticmethod
+    def load_state(state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
+        return Statement.load(Statement.default_scope(), state)
 
 
 @dataclass(frozen=True)
@@ -60,6 +70,12 @@ class Expr(Statement):
     def eval(self, scope: vals.Scope) -> Result:
         self.value.eval(scope)
         return Result()
+
+    @classmethod
+    def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
+        state, value = exprs.Expr.load_state(state)
+        state = parser.consume_token(state, ';')
+        return state, Expr(value)
 
 
 @dataclass(frozen=True)

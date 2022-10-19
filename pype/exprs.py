@@ -22,6 +22,10 @@ class Expr(ABC):
     def default_scope() -> parser.Scope['Expr']:
         return parser.Scope[Expr]({'expr': Expr.load})
 
+    @staticmethod
+    def load_state(state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
+        return Expr.load(Expr.default_scope(), state)
+
 
 @dataclass(frozen=True, repr=False)
 class Arg:
