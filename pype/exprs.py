@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Iterable, Iterator, Mapping, Sequence, Sized
+from typing import Callable, Iterable, Iterator, Mapping, MutableSequence, Sequence, Sized
 from . import errors, vals
 from core import lexer, parser
 
@@ -85,18 +85,23 @@ class Literal(Expr):
     def eval(self, scope: vals.Scope) -> vals.Val:
         return self.value
 
-    @classmethod
-    def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
+    @staticmethod
+    def load_value(state: lexer.TokenStream) -> parser.StateAndResult[vals.Val]:
         from . import builtins_
         token = state.head
-        funcs: Mapping[str, Callable[[str], Expr]] = {
-            'int': lambda value: Literal(builtins_.int_(int(value))),
-            'float': lambda value: Literal(builtins_.float_(float(value))),
-            'str': lambda value: Literal(builtins_.str_(value[1:-1])),
+        funcs: Mapping[str, Callable[[str], vals.Val]] = {
+            'int': lambda value: builtins_.int_(int(value)),
+            'float': lambda value: builtins_.float_(float(value)),
+            'str': lambda value: builtins_.str_(value[1:-1]),
         }
         if token.rule_name not in funcs:
             raise errors.Error(msg=f'unknown literal type {token.rule_name}')
         return state.tail, funcs[token.rule_name](token.value)
+
+    @classmethod
+    def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
+        state, value = Literal.load_value(state)
+        return state, Literal(value)
 
 
 @dataclass(frozen=True)
@@ -140,8 +145,55 @@ class Ref(Expr):
         def eval(self, scope: vals.Scope, object_: vals.Val) -> vals.Val:
             return object_(scope, self.args.eval(scope))
 
-    root: Expr
-    parts: Sequence[Part]
+        @classmethod
+        def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Part']:
+            state, args = Args.load(scope, state)
+            return state, Ref.Call(args)
+
+    class Root(ABC):
+        @abstractmethod
+        def eval(self, scope: vals.Scope) -> vals.Val:
+            ...
+
+        @classmethod
+        @abstractmethod
+        def load(cls,  state: lexer.TokenStream) -> parser.StateAndResult['Ref.Root']:
+            errors_: MutableSequence[errors.Error] = []
+            for load in [Ref.Name.load, Ref.Literal.load]:
+                try:
+                    return load(state)
+                except errors.Error as error:
+                    errors_.append(error)
+            raise errors.NaryError(children=errors_)
+
+    @dataclass(frozen=True)
+    class Name(Root):
+        name: str
+
+        def eval(self, scope: vals.Scope) -> vals.Val:
+            if self.name not in scope:
+                raise errors.Error(msg=f'unknown name {self.name}')
+            return scope[self.name]
+
+        @classmethod
+        def load(cls,  state: lexer.TokenStream) -> parser.StateAndResult['Ref.Root']:
+            state, value = parser.get_token_value(state, 'id')
+            return state, Ref.Name(value)
+
+    @dataclass(frozen=True)
+    class Literal(Root):
+        value: vals.Val
+
+        def eval(self, scope: vals.Scope) -> vals.Val:
+            return self.value
+
+        @classmethod
+        def load(cls,  state: lexer.TokenStream) -> parser.StateAndResult['Ref.Root']:
+            state, value = Literal.load_value(state)
+            return state, Ref.Literal(value)
+
+    root: Root
+    parts: Sequence[Part] = field(default_factory=list[Part])
 
     def __str__(self) -> str:
         return str(self.root) + ''.join(str(part) for part in self.parts)
@@ -151,6 +203,10 @@ class Ref(Expr):
         for part in self.parts:
             object_ = part.eval(scope, object_)
         return object_
+
+    @classmethod
+    def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
+        state, root = Ref.Root.load(state)
 
 
 @dataclass(frozen=True)

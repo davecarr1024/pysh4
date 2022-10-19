@@ -191,3 +191,118 @@ class RefTest(unittest.TestCase):
             ),
             (lexer.TokenStream(), exprs.Ref.Member('a'))
         )
+
+    def test_call_eval(self):
+        self.assertEqual(
+            exprs.Ref.Call(
+                exprs.Args([])
+            ).eval(vals.Scope({}), vals.Class('c', vals.Scope({}))),
+            vals.Object(
+                vals.Class('c', vals.Scope({})),
+                vals.Scope({})
+            )
+        )
+
+    def test_call_load(self):
+        self.assertEqual(
+            exprs.Ref.Call.load(
+                parser.Scope[exprs.Expr]({
+                    'expr': exprs.Literal.load,
+                }),
+                lexer.TokenStream([
+                    lexer.Token('(', '(', lexer.Position(0, 0)),
+                    lexer.Token('1', 'int', lexer.Position(0, 0)),
+                    lexer.Token(',', ',', lexer.Position(0, 0)),
+                    lexer.Token('2', 'int', lexer.Position(0, 0)),
+                    lexer.Token(',', ',', lexer.Position(0, 0)),
+                    lexer.Token('3', 'int', lexer.Position(0, 0)),
+                    lexer.Token(')', ')', lexer.Position(0, 0)),
+                ])
+            ),
+            (
+                lexer.TokenStream(),
+                exprs.Ref.Call(exprs.Args([
+                    exprs.Arg(exprs.Literal(builtins_.int_(1))),
+                    exprs.Arg(exprs.Literal(builtins_.int_(2))),
+                    exprs.Arg(exprs.Literal(builtins_.int_(3))),
+                ])),
+            )
+        )
+
+    def test_name_root_eval(self):
+        self.assertEqual(
+            exprs.Ref.Name('a').eval(vals.Scope({
+                'a': builtins_.int_(1),
+            })),
+            builtins_.int_(1)
+        )
+
+    def test_name_root_load(self):
+        self.assertEqual(
+            exprs.Ref.Name.load(
+                lexer.TokenStream([
+                    lexer.Token('a', 'id', lexer.Position(0, 0)),
+                ])
+            ),
+            (lexer.TokenStream(), exprs.Ref.Name('a'))
+        )
+
+    def test_literal_root_eval(self):
+        self.assertEqual(
+            exprs.Ref.Literal(builtins_.int_(1)).eval(vals.Scope({})),
+            builtins_.int_(1)
+        )
+
+    def test_literal_root_load(self):
+        self.assertEqual(
+            exprs.Ref.Literal.load(
+                lexer.TokenStream([
+                    lexer.Token('1', 'int', lexer.Position(0, 0)),
+                ])
+            ),
+            (lexer.TokenStream(), exprs.Ref.Literal(builtins_.int_(1)))
+        )
+
+    def test_root_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[exprs.Ref.Root]]]([
+            (
+                lexer.TokenStream([
+                    lexer.Token('1', 'int', lexer.Position(0, 0)),
+                ]),
+                (lexer.TokenStream(), exprs.Ref.Literal(builtins_.int_(1)))
+            ),
+            (
+                lexer.TokenStream([
+                    lexer.Token('a', 'id', lexer.Position(0, 0)),
+                ]),
+                (lexer.TokenStream(), exprs.Ref.Name('a'))
+            ),
+        ]):
+            with self.subTest(state=state, root=result):
+                self.assertEqual(
+                    exprs.Ref.Root.load(
+                        state,
+                    ),
+                    result
+                )
+
+    def test_eval(self):
+        for ref, result in list[Tuple[exprs.Ref, vals.Val]]([
+            (
+                exprs.Ref(exprs.Ref.Name('a')),
+                builtins_.int_(1),
+            ),
+        ]):
+            with self.subTest(ref=ref, result=result):
+                self.assertEqual(
+                    ref.eval(vals.Scope({
+                        'a': builtins_.int_(1),
+                        'c': vals.Class(
+                            'c',
+                            vals.Scope({
+                                'a': builtins_.int_(2),
+                            })
+                        ),
+                    })),
+                    result
+                )
