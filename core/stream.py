@@ -14,9 +14,12 @@ class Emptyable(ABC):
         ...
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Stream(Generic[_Item], Iterable[_Item], Sized, Emptyable):
     _items: Sequence[_Item] = field(default_factory=list[_Item])
+
+    def __repr__(self) -> str:
+        return repr(self._items)
 
     def __len__(self) -> int:
         return len(self._items)

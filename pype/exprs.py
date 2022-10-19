@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Iterable, Iterator, Mapping, MutableSequence, Sequence, Sized
+from typing import Callable, Iterable, Iterator, Mapping, Sequence, Sized
 from . import errors, vals
 from core import lexer, parser
 
@@ -14,31 +14,35 @@ class Expr(ABC):
     @classmethod
     @abstractmethod
     def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
-        ...
+        return parser.Or[Expr]([
+            Ref.load,
+        ])(scope, state)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Arg:
     value: Expr
 
-    def __str__(self) -> str:
-        return str(self.value)
+    def __repr__(self) -> str:
+        return repr(self.value)
 
     def eval(self, scope: vals.Scope) -> vals.Arg:
         return vals.Arg(self.value.eval(scope))
 
     @staticmethod
-    def load(scope: parser.Scope[Expr], state: lexer.TokenStream) -> tuple[lexer.TokenStream, 'Arg']:
-        state, value = parser.Ref[Expr]('expr')(scope, state)
-        return state, Arg(value)
+    def loader(scope: parser.Scope[Expr]) -> parser.Rule['Arg']:
+        def inner(_: parser.Scope[Arg], state: lexer.TokenStream) -> parser.StateAndResult[Arg]:
+            state, value = parser.Ref[Expr]('expr')(scope, state)
+            return state, Arg(value)
+        return inner
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Args(Iterable[Arg], Sized):
     _args: Sequence[Arg]
 
-    def __str__(self) -> str:
-        return f'({", ".join(str(arg) for arg in self._args)})'
+    def __repr__(self) -> str:
+        return f'({", ".join(repr(arg) for arg in self._args)})'
 
     def __len__(self) -> int:
         return len(self._args)
@@ -51,9 +55,7 @@ class Args(Iterable[Arg], Sized):
 
     @staticmethod
     def load(scope: parser.Scope[Expr], state: lexer.TokenStream) -> tuple[lexer.TokenStream, 'Args']:
-        def load_arg(arg_scope: parser.Scope[Arg], state: lexer.TokenStream) -> parser.StateAndResult[Arg]:
-            state, value = parser.Ref[Expr]('expr')(scope, state)
-            return state, Arg(value)
+        load_arg = Arg.loader(scope)
 
         def load_tail_arg(arg_scope: parser.Scope[Arg], state: lexer.TokenStream) -> parser.StateAndResult[Arg]:
             state = parser.consume_token(state, ',')
@@ -75,52 +77,30 @@ class Args(Iterable[Arg], Sized):
         return state, Args(args)
 
 
-@dataclass(frozen=True)
-class Literal(Expr):
-    value: vals.Val
-
-    def __str__(self) -> str:
-        return str(self.value)
-
-    def eval(self, scope: vals.Scope) -> vals.Val:
-        return self.value
-
-    @staticmethod
-    def load_value(state: lexer.TokenStream) -> parser.StateAndResult[vals.Val]:
-        from . import builtins_
-        token = state.head
-        funcs: Mapping[str, Callable[[str], vals.Val]] = {
-            'int': lambda value: builtins_.int_(int(value)),
-            'float': lambda value: builtins_.float_(float(value)),
-            'str': lambda value: builtins_.str_(value[1:-1]),
-        }
-        if token.rule_name not in funcs:
-            raise errors.Error(msg=f'unknown literal type {token.rule_name}')
-        return state.tail, funcs[token.rule_name](token.value)
-
-    @classmethod
-    def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
-        state, value = Literal.load_value(state)
-        return state, Literal(value)
-
-
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Ref(Expr):
-    class Part(ABC):
+    class Tail(ABC):
         @abstractmethod
         def eval(self, scope: vals.Scope, object_: vals.Val) -> vals.Val:
             ...
 
         @classmethod
         @abstractmethod
-        def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Part']:
-            ...
+        def loader(cls, scope: parser.Scope[Expr]) -> parser.Rule['Ref.Tail']:
+            return parser.Or[Ref.Tail]([
+                Ref.Member.loader(scope),
+                Ref.Call.loader(scope),
+            ])
+
+        @staticmethod
+        def load(scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndMultipleResult['Ref.Tail']:
+            return parser.ZeroOrMore[Ref.Tail](Ref.Tail.loader(scope))(parser.Scope[Ref.Tail]({}), state)
 
     @dataclass(frozen=True)
-    class Member(Part):
+    class Member(Tail):
         name: str
 
-        def __str__(self) -> str:
+        def __repr__(self) -> str:
             return f'.{self.name}'
 
         def eval(self, scope: vals.Scope, object_: vals.Val) -> vals.Val:
@@ -130,44 +110,45 @@ class Ref(Expr):
             return object_[self.name]
 
         @classmethod
-        def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Part']:
-            state = parser.consume_token(state, '.')
-            state, value = parser.get_token_value(state, 'id')
-            return state, Ref.Member(value)
+        def loader(cls, scope: parser.Scope[Expr]) -> parser.Rule['Ref.Tail']:
+            def inner(_: parser.Scope[Ref.Tail], state: lexer.TokenStream) -> parser.StateAndResult[Ref.Tail]:
+                state = parser.consume_token(state, '.')
+                state, value = parser.get_token_value(state, 'id')
+                return state, Ref.Member(value)
+            return inner
 
     @dataclass(frozen=True)
-    class Call(Part):
+    class Call(Tail):
         args: Args
 
-        def __str__(self) -> str:
-            return str(self.args)
+        def __repr__(self) -> str:
+            return repr(self.args)
 
         def eval(self, scope: vals.Scope, object_: vals.Val) -> vals.Val:
             return object_(scope, self.args.eval(scope))
 
         @classmethod
-        def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Part']:
-            state, args = Args.load(scope, state)
-            return state, Ref.Call(args)
+        def loader(cls, scope: parser.Scope[Expr]) -> parser.Rule['Ref.Tail']:
+            def inner(_: parser.Scope[Ref.Tail], state: lexer.TokenStream) -> parser.StateAndResult[Ref.Tail]:
+                state, args = Args.load(scope, state)
+                return state, Ref.Call(args)
+            return inner
 
-    class Root(ABC):
+    class Head(ABC):
         @abstractmethod
         def eval(self, scope: vals.Scope) -> vals.Val:
             ...
 
         @classmethod
         @abstractmethod
-        def load(cls,  state: lexer.TokenStream) -> parser.StateAndResult['Ref.Root']:
-            errors_: MutableSequence[errors.Error] = []
-            for load in [Ref.Name.load, Ref.Literal.load]:
-                try:
-                    return load(state)
-                except errors.Error as error:
-                    errors_.append(error)
-            raise errors.NaryError(children=errors_)
+        def load(cls, scope: parser.Scope['Ref.Head'], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Head']:
+            return parser.Or[Ref.Head]([
+                Ref.Name.load,
+                Ref.Literal.load,
+            ])(scope, state)
 
     @dataclass(frozen=True)
-    class Name(Root):
+    class Name(Head):
         name: str
 
         def eval(self, scope: vals.Scope) -> vals.Val:
@@ -176,37 +157,53 @@ class Ref(Expr):
             return scope[self.name]
 
         @classmethod
-        def load(cls,  state: lexer.TokenStream) -> parser.StateAndResult['Ref.Root']:
+        def load(cls, scope: parser.Scope['Ref.Head'], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Head']:
             state, value = parser.get_token_value(state, 'id')
             return state, Ref.Name(value)
 
     @dataclass(frozen=True)
-    class Literal(Root):
+    class Literal(Head):
         value: vals.Val
 
         def eval(self, scope: vals.Scope) -> vals.Val:
             return self.value
 
+        @staticmethod
+        def load_value(state: lexer.TokenStream) -> parser.StateAndResult[vals.Val]:
+            from . import builtins_
+            token = state.head
+            funcs: Mapping[str, Callable[[str], vals.Val]] = {
+                'int': lambda value: builtins_.int_(int(value)),
+                'float': lambda value: builtins_.float_(float(value)),
+                'str': lambda value: builtins_.str_(value[1:-1]),
+            }
+            if token.rule_name not in funcs:
+                raise errors.Error(
+                    msg=f'unknown literal type {token.rule_name}')
+            return state.tail, funcs[token.rule_name](token.value)
+
         @classmethod
-        def load(cls,  state: lexer.TokenStream) -> parser.StateAndResult['Ref.Root']:
-            state, value = Literal.load_value(state)
+        def load(cls,  scope: parser.Scope['Ref.Head'], state: lexer.TokenStream) -> parser.StateAndResult['Ref.Head']:
+            state, value = cls.load_value(state)
             return state, Ref.Literal(value)
 
-    root: Root
-    parts: Sequence[Part] = field(default_factory=list[Part])
+    head: Head
+    parts: Sequence[Tail] = field(default_factory=list[Tail])
 
-    def __str__(self) -> str:
-        return str(self.root) + ''.join(str(part) for part in self.parts)
+    def __repr__(self) -> str:
+        return repr(self.head) + ''.join(repr(part) for part in self.parts)
 
     def eval(self, scope: vals.Scope) -> vals.Val:
-        object_ = self.root.eval(scope)
+        object_ = self.head.eval(scope)
         for part in self.parts:
             object_ = part.eval(scope, object_)
         return object_
 
     @classmethod
     def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
-        state, root = Ref.Root.load(state)
+        state, head = Ref.Head.load(parser.Scope[Ref.Head]({}), state)
+        state, tail = Ref.Tail.load(scope, state)
+        return state, Ref(head, tail)
 
 
 @dataclass(frozen=True)
@@ -224,7 +221,7 @@ class BinaryOperation(Expr):
     lhs: Expr
     rhs: Expr
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         return f'{self.lhs} {self.operator.value} {self.rhs}'
 
     @staticmethod
