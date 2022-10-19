@@ -430,3 +430,164 @@ class RefTest(unittest.TestCase):
                     ),
                     result
                 )
+
+
+class BinaryOperationTest(unittest.TestCase):
+    def test_eval(self):
+        for op, result in list[Tuple[exprs.BinaryOperation, vals.Val]]([
+            (
+                exprs.BinaryOperation(
+                    exprs.BinaryOperation.Operator.ADD,
+                    exprs.literal(builtins_.int_(1)),
+                    exprs.literal(builtins_.int_(2)),
+                ),
+                builtins_.int_(3)
+            ),
+            (
+                exprs.BinaryOperation(
+                    exprs.BinaryOperation.Operator.SUB,
+                    exprs.literal(builtins_.int_(1)),
+                    exprs.literal(builtins_.int_(2)),
+                ),
+                builtins_.int_(-1)
+            ),
+            (
+                exprs.BinaryOperation(
+                    exprs.BinaryOperation.Operator.MUL,
+                    exprs.literal(builtins_.int_(1)),
+                    exprs.literal(builtins_.int_(2)),
+                ),
+                builtins_.int_(2)
+            ),
+            (
+                exprs.BinaryOperation(
+                    exprs.BinaryOperation.Operator.DIV,
+                    exprs.literal(builtins_.int_(10)),
+                    exprs.literal(builtins_.int_(2)),
+                ),
+                builtins_.int_(5)
+            ),
+            (
+                exprs.BinaryOperation(
+                    exprs.BinaryOperation.Operator.AND,
+                    exprs.literal(builtins_.true),
+                    exprs.literal(builtins_.false),
+                ),
+                builtins_.false
+            ),
+            (
+                exprs.BinaryOperation(
+                    exprs.BinaryOperation.Operator.OR,
+                    exprs.literal(builtins_.true),
+                    exprs.literal(builtins_.false),
+                ),
+                builtins_.true
+            ),
+        ]):
+            with self.subTest(op=op, result=result):
+                self.assertEqual(
+                    op.eval(vals.Scope({})),
+                    result
+                )
+
+    def test_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[exprs.Expr]]]([
+            (
+                lexer.TokenStream([
+                    lexer.Token('1', 'int', lexer.Position(0, 0)),
+                    lexer.Token('+', '+', lexer.Position(0, 0)),
+                    lexer.Token('2', 'int', lexer.Position(0, 0)),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.BinaryOperation(
+                        exprs.BinaryOperation.Operator.ADD,
+                        exprs.literal(builtins_.int_(1)),
+                        exprs.literal(builtins_.int_(2)),
+                    )
+                )
+            ),
+            (
+                lexer.TokenStream([
+                    lexer.Token('1', 'int', lexer.Position(0, 0)),
+                    lexer.Token('-', '-', lexer.Position(0, 0)),
+                    lexer.Token('2', 'int', lexer.Position(0, 0)),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.BinaryOperation(
+                        exprs.BinaryOperation.Operator.SUB,
+                        exprs.literal(builtins_.int_(1)),
+                        exprs.literal(builtins_.int_(2)),
+                    )
+                )
+            ),
+            (
+                lexer.TokenStream([
+                    lexer.Token('1', 'int', lexer.Position(0, 0)),
+                    lexer.Token('*', '*', lexer.Position(0, 0)),
+                    lexer.Token('2', 'int', lexer.Position(0, 0)),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.BinaryOperation(
+                        exprs.BinaryOperation.Operator.MUL,
+                        exprs.literal(builtins_.int_(1)),
+                        exprs.literal(builtins_.int_(2)),
+                    )
+                )
+            ),
+            (
+                lexer.TokenStream([
+                    lexer.Token('1', 'int', lexer.Position(0, 0)),
+                    lexer.Token('/', '/', lexer.Position(0, 0)),
+                    lexer.Token('2', 'int', lexer.Position(0, 0)),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.BinaryOperation(
+                        exprs.BinaryOperation.Operator.DIV,
+                        exprs.literal(builtins_.int_(1)),
+                        exprs.literal(builtins_.int_(2)),
+                    )
+                )
+            ),
+            (
+                lexer.TokenStream([
+                    lexer.Token('true', 'id', lexer.Position(0, 0)),
+                    lexer.Token('and', 'and', lexer.Position(0, 0)),
+                    lexer.Token('false', 'id', lexer.Position(0, 0)),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.BinaryOperation(
+                        exprs.BinaryOperation.Operator.AND,
+                        exprs.ref('true'),
+                        exprs.ref('false'),
+                    )
+                )
+            ),
+            (
+                lexer.TokenStream([
+                    lexer.Token('true', 'id', lexer.Position(0, 0)),
+                    lexer.Token('or', 'or', lexer.Position(0, 0)),
+                    lexer.Token('false', 'id', lexer.Position(0, 0)),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.BinaryOperation(
+                        exprs.BinaryOperation.Operator.OR,
+                        exprs.ref('true'),
+                        exprs.ref('false'),
+                    )
+                )
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    exprs.BinaryOperation.load(
+                        exprs.Expr.default_scope(),
+                        state
+                    ),
+                    result
+                )

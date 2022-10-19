@@ -18,6 +18,10 @@ class Expr(ABC):
             Ref.load,
         ])(scope, state)
 
+    @staticmethod
+    def default_scope() -> parser.Scope['Expr']:
+        return parser.Scope[Expr]({'expr': Expr.load})
+
 
 @dataclass(frozen=True, repr=False)
 class Arg:
@@ -206,8 +210,12 @@ class Ref(Expr):
         return state, Ref(head, tail)
 
 
-def literal(value: vals.Val) -> Expr:
+def literal(value: vals.Val) -> Ref:
     return Ref(Ref.Literal(value))
+
+
+def ref(name: str) -> Ref:
+    return Ref(Ref.Name(name))
 
 
 @dataclass(frozen=True)
@@ -236,3 +244,15 @@ class BinaryOperation(Expr):
         lhs = self.lhs.eval(scope)
         rhs = self.rhs.eval(scope)
         return lhs[self._func_for_operator(self.operator)](scope, vals.Args([vals.Arg(rhs)]))
+
+    @classmethod
+    def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
+        state, lhs = parser.Ref[Expr]('expr')(scope, state)
+        operator_value = state.head.value
+        if not any(operator.value == operator_value for operator in BinaryOperation.Operator):
+            raise parser.StateError(
+                msg=f'unknown operator {operator_value}', state=state)
+        state = state.tail
+        operator = BinaryOperation.Operator(operator_value)
+        state, rhs = parser.Ref[Expr]('expr')(scope, state)
+        return state, BinaryOperation(operator, lhs, rhs)
