@@ -1,3 +1,4 @@
+import builtins
 from typing import Optional, Tuple
 import unittest
 from core import lexer, parser
@@ -117,6 +118,163 @@ class ReturnTest(unittest.TestCase):
                     statements.Return.load(
                         statements.Statement.default_scope(),
                         state
+                    ),
+                    result
+                )
+
+
+class ClassTest(unittest.TestCase):
+    def test_eval(self):
+        scope = vals.Scope({})
+        self.assertEqual(
+            statements.Class(
+                'c',
+                statements.Block([
+                    statements.Assignment(
+                        exprs.ref('a'),
+                        exprs.literal(builtins_.int_(1)),
+                    ),
+                ])
+            ).eval(scope),
+            statements.Result()
+        )
+        self.assertEqual(
+            scope['c'],
+            vals.Class(
+                'c',
+                vals.Scope({
+                    'a': builtins_.int_(1),
+                })
+            )
+        )
+
+    def test_load(self):
+        self.assertEqual(
+            statements.Class.load(
+                statements.Statement.default_scope(),
+                lexer.TokenStream([
+                    _tok('class'),
+                    _tok('c', 'id'),
+                    _tok('{'),
+                    _tok('a', 'id'),
+                    _tok('='),
+                    _tok('1', 'int'),
+                    _tok(';'),
+                    _tok('}'),
+                ])
+            ),
+            (
+                lexer.TokenStream(),
+                statements.Class(
+                    'c',
+                    statements.Block([
+                        statements.Assignment(
+                            exprs.ref('a'),
+                            exprs.literal(builtins_.int_(1)),
+                        ),
+                    ])
+                )
+            )
+        )
+
+
+class NamespaceTest(unittest.TestCase):
+    def test_eval(self):
+        for namespace, expected_scope in list[Tuple[statements.Namespace, vals.Scope]]([
+            (
+                statements.Namespace(
+                    statements.Block([
+                        statements.Assignment(
+                            exprs.ref('a'),
+                            exprs.literal(builtins_.int_(1)),
+                        ),
+                    ])
+                ),
+                vals.Scope({
+                })
+            ),
+            (
+                statements.Namespace(
+                    statements.Block([
+                        statements.Assignment(
+                            exprs.ref('a'),
+                            exprs.literal(builtins_.int_(1)),
+                        ),
+                    ]),
+                    _name='n'
+                ),
+                vals.Scope({
+                    'n': vals.Namespace(
+                        vals.Scope({
+                            'a': builtins_.int_(1),
+                        }),
+                        name='n'
+                    )
+                })
+            ),
+        ]):
+            with self.subTest(namespace=namespace, expected_scope=expected_scope):
+                scope = vals.Scope({})
+                self.assertEqual(
+                    namespace.eval(scope),
+                    statements.Result()
+                )
+                self.assertEqual(scope, expected_scope)
+
+    def test_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[statements.Statement]]]([
+            (
+                lexer.TokenStream([
+                    _tok('namespace'),
+                    _tok('{'),
+                    _tok('a', 'id'),
+                    _tok('='),
+                    _tok('1', 'int'),
+                    _tok(';'),
+                    _tok('}'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    statements.Namespace(
+                        body=statements.Block([
+                            statements.Assignment(
+                                exprs.ref('a'),
+                                exprs.literal(builtins_.int_(1)),
+                            ),
+                        ])
+                    )
+                ),
+            ),
+            (
+                lexer.TokenStream([
+                    _tok('namespace'),
+                    _tok('n', 'id'),
+                    _tok('{'),
+                    _tok('a', 'id'),
+                    _tok('='),
+                    _tok('1', 'int'),
+                    _tok(';'),
+                    _tok('}'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    statements.Namespace(
+                        _name='n',
+                        body=statements.Block([
+                            statements.Assignment(
+                                exprs.ref('a'),
+                                exprs.literal(builtins_.int_(1)),
+                            ),
+                        ])
+                    )
+                ),
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    statements.Namespace.load(
+                        statements.Statement.default_scope(),
+                        state,
                     ),
                     result
                 )

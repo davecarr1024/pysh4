@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Iterable, Iterator, Optional, Sequence, Sized, final
-from . import exprs, vals
+from . import errors, exprs, vals
 from core import lexer, parser
 
 
@@ -22,7 +22,13 @@ class Statement(ABC):
     @classmethod
     @abstractmethod
     def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
-        raise NotImplementedError()
+        return parser.Or[Statement]([
+            Assignment.load,
+            Expr.load,
+            Return.load,
+            Class.load,
+            Namespace.load,
+        ])(scope, state)
 
     @staticmethod
     def default_scope() -> parser.Scope['Statement']:
@@ -51,6 +57,16 @@ class Block(Iterable[Statement], Sized):
             if result.return_ is not None:
                 return result
         return Result()
+
+    @staticmethod
+    def loader(scope: parser.Scope[Statement]) -> parser.Rule['Block']:
+        def inner(_: parser.Scope[Block], state: lexer.TokenStream) -> parser.StateAndResult[Block]:
+            state = parser.consume_token(state, '{')
+            state, values = parser.ZeroOrMore[Statement](
+                Statement.load)(scope, state)
+            state = parser.consume_token(state, '}')
+            return state, Block(values)
+        return inner
 
 
 @dataclass(frozen=True)
@@ -145,6 +161,13 @@ class Class(Decl):
         result = self.body.eval(members)
         return Decl.Value(vals.Class(self.name, members), result)
 
+    @classmethod
+    def load(cls, scope: parser.Scope[Statement], state: lexer.TokenStream) -> parser.StateAndResult[Statement]:
+        state = parser.consume_token(state, 'class')
+        state, name = parser.get_token_value(state, 'id')
+        state, body = Block.loader(scope)(parser.Scope[Block]({}), state)
+        return state, Class(name, body)
+
 
 @dataclass(frozen=True)
 class Namespace(Decl):
@@ -159,3 +182,14 @@ class Namespace(Decl):
         members = scope.as_child()
         result = self.body.eval(members)
         return Decl.Value(vals.Namespace(members, name=self.name), result)
+
+    @classmethod
+    def load(cls, scope: parser.Scope[Statement], state: lexer.TokenStream) -> parser.StateAndResult[Statement]:
+        state = parser.consume_token(state, 'namespace')
+        name: Optional[str] = None
+        try:
+            state, name = parser.get_token_value(state, 'id')
+        except errors.Error:
+            pass
+        state, body = Block.loader(scope)(parser.Scope[Block]({}), state)
+        return state, Namespace(body, _name=name)
