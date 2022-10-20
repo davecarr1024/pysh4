@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Tuple, TypeVar, overload
-from . import errors, lexer, processor, stream
+from . import lexer, processor, stream
 
 _Result = TypeVar('_Result')
 
@@ -43,17 +43,17 @@ class Parser(processor.Processor[lexer.TokenStream, _Result]):
 
 def get_token_value(state: lexer.TokenStream, rule_name: str) -> Tuple[lexer.TokenStream, str]:
     if state.empty:
-        raise errors.Error(msg='empty stream')
+        raise StateError(msg='empty stream', state=state)
     if state.head.rule_name != rule_name:
-        raise errors.Error(
-            msg=f'expected token rule_name {rule_name} got {state.head.rule_name}')
+        raise StateError(state=state,
+                         msg=f'expected token rule_name {rule_name} got {state.head.rule_name}')
     return state.tail, state.head.value
 
 
 def consume_token(state: lexer.TokenStream, rule_name: str) -> lexer.TokenStream:
     if state.empty:
-        raise errors.Error(msg='empty stream')
+        raise StateError(state=state, msg='empty stream')
     if state.head.rule_name != rule_name:
-        raise errors.Error(
-            msg=f'expected token rule_name {rule_name} got {state.head.rule_name}')
+        raise StateError(state=state,
+                         msg=f'expected token rule_name {rule_name} got {state.head.rule_name}')
     return state.tail

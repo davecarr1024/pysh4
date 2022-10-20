@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from core import lexer, parser
 from . import errors, params, builtins_, statements, vals, funcs
 
 
@@ -17,7 +18,7 @@ class Func(funcs.AbstractFunc):
             scope = self._params.bind(scope, args)
         except errors.Error as error:
             raise errors.Error(
-                f'failed to bind params for func {self} with args {args}: {error}') from error
+                msg=f'failed to bind params for func {self} with args {args}: {error}') from error
         result = self.body.eval(scope)
         if result.return_ is not None and result.return_.value is not None:
             return result.return_.value
@@ -36,3 +37,11 @@ class Decl(statements.Decl):
 
     def value(self, scope: vals.Scope) -> statements.Decl.Value:
         return Decl.Value(Func(self.name, self.params_, self.body), statements.Result())
+
+    @classmethod
+    def load(cls, scope: parser.Scope[statements.Statement], state: lexer.TokenStream) -> parser.StateAndResult[statements.Statement]:
+        state = parser.consume_token(state, 'def')
+        state, name = parser.get_token_value(state, 'id')
+        state, params_ = params.Params.load(state)
+        state, body = statements.Block.load(state)
+        return state, Decl(name, params_, body)

@@ -1,7 +1,11 @@
-from typing import Tuple
+from typing import Optional, Tuple
 import unittest
 from . import builtins_, errors, vals, exprs
 from core import lexer, parser
+
+
+def _tok(value: str, rule_name: Optional[str] = None) -> lexer.Token:
+    return lexer.Token(value, rule_name or value, lexer.Position(0, 0))
 
 
 class ArgTest(unittest.TestCase):
@@ -547,6 +551,21 @@ class BinaryOperationTest(unittest.TestCase):
             ),
             (
                 lexer.TokenStream([
+                    lexer.Token('a', 'id', lexer.Position(0, 0)),
+                    lexer.Token('+', '+', lexer.Position(0, 0)),
+                    lexer.Token('b', 'id', lexer.Position(0, 0)),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.BinaryOperation(
+                        exprs.BinaryOperation.Operator.ADD,
+                        exprs.ref('a'),
+                        exprs.ref('b'),
+                    )
+                )
+            ),
+            (
+                lexer.TokenStream([
                     lexer.Token('1', 'int', lexer.Position(0, 0)),
                     lexer.Token('-', '-', lexer.Position(0, 0)),
                     lexer.Token('2', 'int', lexer.Position(0, 0)),
@@ -629,3 +648,35 @@ class BinaryOperationTest(unittest.TestCase):
                     ),
                     result
                 )
+
+
+class ExprTest(unittest.TestCase):
+    def test_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[exprs.Expr]]]([
+            (
+                lexer.TokenStream([
+                    _tok('a', 'id'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.ref('a'),
+                )
+            ),
+            (
+                lexer.TokenStream([
+                    _tok('a', 'id'),
+                    _tok('+'),
+                    _tok('b', 'id'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.BinaryOperation(
+                        exprs.BinaryOperation.Operator.ADD,
+                        exprs.ref('a'),
+                        exprs.ref('b'),
+                    )
+                )
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(exprs.Expr.load_state(state), result)

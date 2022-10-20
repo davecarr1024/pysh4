@@ -15,12 +15,16 @@ class Expr(ABC):
     @abstractmethod
     def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
         return parser.Or[Expr]([
+            BinaryOperation.load,
             Ref.load,
         ])(scope, state)
 
     @staticmethod
     def default_scope() -> parser.Scope['Expr']:
-        return parser.Scope[Expr]({'expr': Expr.load})
+        return parser.Scope[Expr]({
+            'expr': Expr.load,
+            'operand': Ref.load,
+        })
 
     @staticmethod
     def load_state(state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
@@ -279,13 +283,13 @@ class BinaryOperation(Expr):
         return lhs[self._func_for_operator(self.operator)](scope, vals.Args([vals.Arg(rhs)]))
 
     @classmethod
-    def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
-        state, lhs = parser.Ref[Expr]('expr')(scope, state)
+    def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult[Expr]:
+        state, lhs = parser.Ref[Expr]('operand')(scope, state)
         operator_value = state.head.value
         if not any(operator.value == operator_value for operator in BinaryOperation.Operator):
             raise parser.StateError(
                 msg=f'unknown operator {operator_value}', state=state)
         state = state.tail
         operator = BinaryOperation.Operator(operator_value)
-        state, rhs = parser.Ref[Expr]('expr')(scope, state)
+        state, rhs = parser.Ref[Expr]('operand')(scope, state)
         return state, BinaryOperation(operator, lhs, rhs)

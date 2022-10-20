@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Iterable, Iterator, Sequence, Sized
+from core import lexer, parser
 from . import errors, vals
 
 
@@ -12,6 +13,11 @@ class Param:
 
     def bind(self, scope: vals.Scope, arg: vals.Arg) -> None:
         scope[self.name] = arg.value
+
+    @staticmethod
+    def load(state: lexer.TokenStream) -> parser.StateAndResult['Param']:
+        state, name = parser.get_token_value(state, 'id')
+        return state, Param(name)
 
 
 @dataclass(frozen=True, repr=False)
@@ -42,3 +48,26 @@ class Params(Iterable[Param], Sized):
         for param, arg in zip(self, args):
             param.bind(scope, arg)
         return scope
+
+    @staticmethod
+    def load(state: lexer.TokenStream) -> parser.StateAndResult['Params']:
+        state = parser.consume_token(state, '(')
+
+        def load_params(state: lexer.TokenStream) -> parser.StateAndMultipleResult[Param]:
+            state, head = Param.load(state)
+
+            def load_tail(_: parser.Scope[Param], state: lexer.TokenStream) -> parser.StateAndResult[Param]:
+                state = parser.consume_token(state, ',')
+                return Param.load(state)
+
+            state, tail = parser.ZeroOrMore[Param](
+                load_tail)(parser.Scope[Param]({}), state)
+            return state, [head] + list(tail)
+
+        params: Sequence[Param] = []
+        try:
+            state, params = load_params(state)
+        except errors.Error:
+            pass
+        state = parser.consume_token(state, ')')
+        return state, Params(params)

@@ -23,11 +23,11 @@ class Statement(ABC):
     @abstractmethod
     def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
         return parser.Or[Statement]([
-            Assignment.load,
-            Expr.load,
             Return.load,
             Class.load,
             Namespace.load,
+            Assignment.load,
+            Expr.load,
         ])(scope, state)
 
     @staticmethod
@@ -67,6 +67,10 @@ class Block(Iterable[Statement], Sized):
             state = parser.consume_token(state, '}')
             return state, Block(values)
         return inner
+
+    @staticmethod
+    def load(state: lexer.TokenStream) -> parser.StateAndResult['Block']:
+        return Block.loader(Statement.default_scope())(parser.Scope[Block]({}), state)
 
 
 @dataclass(frozen=True)

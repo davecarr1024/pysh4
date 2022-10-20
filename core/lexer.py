@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import MutableSequence, overload
-from . import processor, stream, regex
+from . import errors, processor, stream, regex
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,18 @@ class Token(regex.Token):
     position: Position
 
 
-TokenStream = stream.Stream[Token]
+class TokenStream(stream.Stream[Token]):
+    def __repr__(self) -> str:
+        if len(self) == 0:
+            return 'EOF'
+        s = ' '.join(token.value for token in list(self)[:10])
+        return f'{repr(s)}@{self.head.position}'
+
+    @property
+    def tail(self) -> 'TokenStream':
+        if self.empty:
+            raise errors.Error(msg=f'empty stream')
+        return TokenStream(self._items[1:])
 
 
 Rule = processor.Rule[CharStream, TokenStream]

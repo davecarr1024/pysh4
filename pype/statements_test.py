@@ -1,8 +1,7 @@
-import builtins
 from typing import Optional, Tuple
 import unittest
 from core import lexer, parser
-from . import builtins_, exprs, errors, statements, vals
+from . import builtins_, exprs, statements, vals
 
 
 def _tok(value: str, rule_name: Optional[str] = None) -> lexer.Token:
@@ -109,6 +108,38 @@ class ReturnTest(unittest.TestCase):
                     lexer.TokenStream(),
                     statements.Return(
                         exprs.literal(builtins_.int_(1))
+                    ),
+                ),
+            ),
+            (
+                lexer.TokenStream([
+                    _tok('return'),
+                    _tok('a', 'id'),
+                    _tok(';'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    statements.Return(
+                        exprs.ref('a')
+                    ),
+                ),
+            ),
+            (
+                lexer.TokenStream([
+                    _tok('return'),
+                    _tok('a', 'id'),
+                    _tok('+'),
+                    _tok('b', 'id'),
+                    _tok(';'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    statements.Return(
+                        exprs.BinaryOperation(
+                            exprs.BinaryOperation.Operator.ADD,
+                            exprs.ref('a'),
+                            exprs.ref('b'),
+                        )
                     ),
                 ),
             ),
