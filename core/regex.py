@@ -108,6 +108,12 @@ class Literal(AbstractRule[_Char]):
         return state.tail, Token(state.head.value)
 
 
+def literal(value: str) -> Rule[_Char]:
+    if len(value) == 1:
+        return Literal[_Char](value)
+    return And[_Char]([Literal[_Char](char) for char in value])
+
+
 @dataclass(frozen=True, repr=False)
 class Not(processor.UnaryRule[CharStream[_Char], Token]):
     def __repr__(self) -> str:

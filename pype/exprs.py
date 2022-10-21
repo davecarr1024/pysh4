@@ -173,9 +173,12 @@ class Ref(Expr):
                 Ref.Literal.load,
             ])(scope, state)
 
-    @dataclass(frozen=True)
+    @dataclass(frozen=True, repr=False)
     class Name(Head):
         name: str
+
+        def __repr__(self) -> str:
+            return self.name
 
         def eval(self, scope: vals.Scope) -> vals.Val:
             if self.name not in scope:
@@ -190,9 +193,12 @@ class Ref(Expr):
             state, value = parser.get_token_value(state, 'id')
             return state, Ref.Name(value)
 
-    @dataclass(frozen=True)
+    @dataclass(frozen=True, repr=False)
     class Literal(Head):
         value: vals.Val
+
+        def __repr__(self) -> str:
+            return repr(self.value)
 
         def eval(self, scope: vals.Scope) -> vals.Val:
             return self.value

@@ -46,7 +46,7 @@ def get_token_value(state: lexer.TokenStream, rule_name: str) -> Tuple[lexer.Tok
         raise StateError(msg='empty stream', state=state)
     if state.head.rule_name != rule_name:
         raise StateError(state=state,
-                         msg=f'expected token rule_name {rule_name} got {state.head.rule_name}')
+                         msg=f'expected token {rule_name} got {state.head.rule_name}')
     return state.tail, state.head.value
 
 
@@ -55,5 +55,5 @@ def consume_token(state: lexer.TokenStream, rule_name: str) -> lexer.TokenStream
         raise StateError(state=state, msg='empty stream')
     if state.head.rule_name != rule_name:
         raise StateError(state=state,
-                         msg=f'expected token rule_name {rule_name} got {state.head.rule_name}')
+                         msg=f'expected token {rule_name} got {state.head.rule_name}')
     return state.tail

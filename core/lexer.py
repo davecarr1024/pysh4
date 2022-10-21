@@ -41,7 +41,7 @@ class TokenStream(stream.Stream[Token]):
     def __repr__(self) -> str:
         if len(self) == 0:
             return 'EOF'
-        s = ' '.join(token.value for token in list(self)[:10])
+        s = repr([f'{token.rule_name}({token.value})' for token in self])
         return f'{repr(s)}@{self.head.position}'
 
     @property
@@ -67,6 +67,7 @@ ReLiteral = regex.Literal[Char]
 ReNot = regex.Not[Char]
 ReClass = regex.Class[Char]
 ReRange = regex.Range[Char]
+ReScope = regex.Scope[Char]
 
 
 class _ResultCombiner(processor.ResultCombiner[CharStream, TokenStream]):
@@ -89,6 +90,9 @@ _REGEX_RULE_NAME = f'{_RULE_PREFIX}_regexes'
 class _Regex:
     name: str
     rule: regex.Rule[Char]
+
+    def __repr__(self) -> str:
+        return f'{self.name}({self.rule})'
 
     def __call__(self, scope: Scope, state: CharStream) -> StateAndResult:
         position = state.head.position

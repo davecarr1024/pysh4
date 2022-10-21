@@ -3,11 +3,14 @@ from core import lexer, parser
 from . import errors, params, builtins_, statements, vals, funcs
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Func(funcs.AbstractFunc):
     name: str
     _params: params.Params
     body: statements.Block
+
+    def __repr__(self) -> str:
+        return f'def {self.name}{self._params}{self.body}'
 
     @property
     def params(self) -> params.Params:
@@ -25,11 +28,14 @@ class Func(funcs.AbstractFunc):
         return builtins_.none
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Decl(statements.Decl):
     _name: str
     params_: params.Params
     body: statements.Block
+
+    def __repr__(self) -> str:
+        return f'def {self._name}{self.params_}{self.body}'
 
     @property
     def name(self) -> str:

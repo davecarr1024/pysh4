@@ -23,19 +23,37 @@ MultipleResultRule = Callable[
 ]
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, repr=False)
 class StateError(errors.NaryError, Generic[_State]):
     state: _State
 
+    def _repr_line(self) -> str:
+        return f'{super()._repr_line()} state={self.state}'
 
-@dataclass(frozen=True, kw_only=True)
+    def __repr__(self) -> str:
+        return self._repr(0)
+
+
+@dataclass(frozen=True, kw_only=True, repr=False)
 class RuleError(StateError[_State], Generic[_State, _Result]):
     rule: Rule[_State, _Result]
 
+    def _repr_line(self) -> str:
+        return f'{super()._repr_line()} rule={self.rule}'
 
-@dataclass(frozen=True, kw_only=True)
+    def __repr__(self) -> str:
+        return self._repr(0)
+
+
+@dataclass(frozen=True, kw_only=True, repr=False)
 class RuleNameError(errors.UnaryError):
     rule_name: str
+
+    def _repr_line(self) -> str:
+        return f'{super()._repr_line()} rule_name={self.rule_name}'
+
+    def __repr__(self) -> str:
+        return self._repr(0)
 
 
 @dataclass(frozen=True)
@@ -95,8 +113,11 @@ class Ref(Generic[_State, _Result], AbstractRule[_State, _Result]):
         try:
             return scope[self.rule_name](scope, state)
         except errors.Error as error:
-            raise RuleNameError(rule_name=self.rule_name,
-                                child=error) from error
+            if self.rule_name.startswith('_'):
+                raise error from error
+            else:
+                raise RuleNameError(rule_name=self.rule_name,
+                                    child=error) from error
 
 
 @dataclass(frozen=True)

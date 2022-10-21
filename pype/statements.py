@@ -22,12 +22,14 @@ class Statement(ABC):
     @classmethod
     @abstractmethod
     def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
+        from . import func
         return parser.Or[Statement]([
             Return.load,
             Class.load,
             Namespace.load,
             Assignment.load,
             Expr.load,
+            func.Decl.load,
         ])(scope, state)
 
     @staticmethod
@@ -41,9 +43,12 @@ class Statement(ABC):
         return Statement.load(Statement.default_scope(), state)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Block(Iterable[Statement], Sized):
     _statements: Sequence[Statement]
+
+    def __repr__(self) -> str:
+        return f'{{{" ".join(repr(statement) for statement in self._statements)}}}'
 
     def __len__(self) -> int:
         return len(self._statements)
@@ -73,10 +78,13 @@ class Block(Iterable[Statement], Sized):
         return Block.loader(Statement.default_scope())(parser.Scope[Block]({}), state)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class Assignment(Statement):
     ref: exprs.Ref
     value: exprs.Expr
+
+    def __repr__(self) -> str:
+        return f'{self.ref} = {self.value};'
 
     def eval(self, scope: vals.Scope) -> Result:
         self.ref.assign(scope, self.value.eval(scope))
