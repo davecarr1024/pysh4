@@ -37,17 +37,17 @@ class PypeTest(unittest.TestCase):
                 ''',
                 builtins_.int_(1),
             ),
-            # (
-            #     r'''
-            #     class c {
-            #         def __init__(self) {
-            #             self.a = 1;
-            #         }
-            #     }
-            #     c().a;
-            #     ''',
-            #     builtins_.int_(1),
-            # ),
+            (
+                r'''
+                class c {
+                    def __init__(self) {
+                        self.a = 1;
+                    }
+                }
+                c().a;
+                ''',
+                builtins_.int_(1),
+            ),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(pype.eval(input), result)

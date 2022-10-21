@@ -42,7 +42,7 @@ class Decl(statements.Decl):
         return self._name
 
     def value(self, scope: vals.Scope) -> statements.Decl.Value:
-        return Decl.Value(Func(self.name, self.params_, self.body), statements.Result())
+        return Decl.Value(funcs.BindableFunc(Func(self.name, self.params_, self.body)), statements.Result())
 
     @classmethod
     def load(cls, scope: parser.Scope[statements.Statement], state: lexer.TokenStream) -> parser.StateAndResult[statements.Statement]:

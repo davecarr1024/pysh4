@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import unittest
-from . import builtins_, errors, vals
+from . import builtins_, errors, vals, funcs, func, statements, params, exprs
 
 if 'unittest.util' in __import__('sys').modules:
     # Show full diff in self.assertEqual.
@@ -105,3 +105,27 @@ class ClassTest(unittest.TestCase):
                 })),
             )
         )
+
+    def test_init(self):
+        c = vals.Class(
+            'c',
+            vals.Scope({
+                '__init__': funcs.BindableFunc(
+                    func.Func(
+                        '__init__',
+                        params.Params([params.Param('self')]),
+                        statements.Block([
+                            statements.Assignment(
+                                exprs.Ref(
+                                    exprs.Ref.Name('self'),
+                                    [exprs.Ref.Member('a')]
+                                ),
+                                exprs.literal(builtins_.int_(1)),
+                            ),
+                        ])
+                    )
+                ),
+            })
+        )
+        o = c(vals.Scope({}), vals.Args([]))
+        self.assertEqual(o['a'], builtins_.int_(1))
