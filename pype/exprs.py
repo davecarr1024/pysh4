@@ -271,6 +271,11 @@ class BinaryOperation(Expr):
         DIV = '/'
         AND = 'and'
         OR = 'or'
+        EQ = '=='
+        LT = '<'
+        LE = '<='
+        GT = '>'
+        GE = '>='
 
     operator: Operator
     lhs: Expr

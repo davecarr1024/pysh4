@@ -49,6 +49,24 @@ class IntTest(unittest.TestCase):
             builtins_.int_(5)
         )
 
+    def test_lt_true(self):
+        self.assertEqual(
+            builtins_.int_(1)['__lt__'](
+                vals.Scope({}),
+                vals.Args([vals.Arg(builtins_.int_(2))])
+            ),
+            builtins_.true
+        )
+
+    def test_lt_false(self):
+        self.assertEqual(
+            builtins_.int_(2)['__lt__'](
+                vals.Scope({}),
+                vals.Args([vals.Arg(builtins_.int_(1))])
+            ),
+            builtins_.false
+        )
+
 
 class FloatTest(unittest.TestCase):
     def test_eq(self):
@@ -126,6 +144,8 @@ class BoolTest(unittest.TestCase):
         self.assertEqual(builtins_.bool_(False), builtins_.bool_(False))
         self.assertEqual(builtins_.bool_(False), builtins_.false)
         self.assertNotEqual(builtins_.bool_(True), builtins_.bool_(False))
+        self.assertEqual(builtins_.true, builtins_.true)
+        self.assertEqual(builtins_.false, builtins_.false)
 
     def test_class(self):
         self.assertEqual(

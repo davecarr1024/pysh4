@@ -1,6 +1,6 @@
 from typing import Optional, Sequence
 from core import lexer, parser, regex
-from . import builtins_, statements, vals
+from . import builtins_, exprs, statements, vals
 
 
 def eval(input: str, scope: Optional[vals.Scope] = None) -> vals.Val:
@@ -17,13 +17,7 @@ def eval(input: str, scope: Optional[vals.Scope] = None) -> vals.Val:
         'class',
         'return',
         'namespace',
-        '+',
-        '-',
-        '*',
-        '/',
-        'and',
-        'or',
-    ]
+    ] + [op.value for op in exprs.BinaryOperation.Operator]
     _, tokens = lexer.Lexer(
 
         **({

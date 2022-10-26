@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import operator
 from dataclasses import dataclass, field
-from typing import Callable, Generic, Type, TypeVar
+from typing import Any, Callable, Generic, Type, TypeVar
 from . import errors, funcs, params, vals
 
 
@@ -59,6 +59,7 @@ class IntObject(_ValueObject[int]):
 class _IntFunc(_Func, ABC):
     name: str
     func: Callable[[int, int], int]
+    return_factory: Callable[[Any], vals.Val] = lambda val: int_(val)
 
     @property
     def params(self) -> params.Params:
@@ -73,7 +74,7 @@ class _IntFunc(_Func, ABC):
     def apply(self, scope: vals.Scope, args: vals.Scope) -> vals.Val:
         self_ = self._int_arg(args['self']).value
         rhs = self._int_arg(args['rhs']).value
-        return int_(self.func(self_, rhs))
+        return self.return_factory(self.func(self_, rhs))
 
 
 IntClass = _Class(
@@ -83,6 +84,11 @@ IntClass = _Class(
         '__sub__': funcs.BindableFunc(_IntFunc('__sub__', operator.sub)),
         '__mul__': funcs.BindableFunc(_IntFunc('__mul__', operator.mul)),
         '__div__': funcs.BindableFunc(_IntFunc('__div__', operator.floordiv)),
+        '__eq__': funcs.BindableFunc(_IntFunc('__eq__', operator.eq, lambda val: bool_(val))),
+        '__lt__': funcs.BindableFunc(_IntFunc('__lt__', operator.lt, lambda val: bool_(val))),
+        '__le__': funcs.BindableFunc(_IntFunc('__le__', operator.le, lambda val: bool_(val))),
+        '__gt__': funcs.BindableFunc(_IntFunc('__gt__', operator.gt, lambda val: bool_(val))),
+        '__ge__': funcs.BindableFunc(_IntFunc('__ge__', operator.ge, lambda val: bool_(val))),
     }),
     IntObject,
 )
@@ -92,7 +98,6 @@ def int_(value: int) -> vals.Object:
     return IntClass.instantiate(value)
 
 
-@dataclass(frozen=True, eq=False)
 class FloatObject(_ValueObject[float]):
     '''float builtin'''
 
@@ -104,6 +109,7 @@ class FloatObject(_ValueObject[float]):
 class _FloatFunc(_Func, ABC):
     name: str
     func: Callable[[float, float], float]
+    return_factory: Callable[[Any], vals.Val] = lambda val: int_(val)
 
     @property
     def params(self) -> params.Params:
@@ -118,7 +124,7 @@ class _FloatFunc(_Func, ABC):
     def apply(self, scope: vals.Scope, args: vals.Scope) -> vals.Val:
         self_ = self._float_arg(args['self']).value
         rhs = self._float_arg(args['rhs']).value
-        return float_(self.func(self_, rhs))
+        return self.return_factory(self.func(self_, rhs))
 
 
 FloatClass = _Class(
@@ -128,6 +134,11 @@ FloatClass = _Class(
         '__sub__': funcs.BindableFunc(_FloatFunc('__sub__', operator.sub)),
         '__mul__': funcs.BindableFunc(_FloatFunc('__mul__', operator.mul)),
         '__div__': funcs.BindableFunc(_FloatFunc('__div__', operator.truediv)),
+        '__eq__': funcs.BindableFunc(_FloatFunc('__eq__', operator.eq, lambda val: bool_(val))),
+        '__lt__': funcs.BindableFunc(_FloatFunc('__lt__', operator.lt, lambda val: bool_(val))),
+        '__le__': funcs.BindableFunc(_FloatFunc('__le__', operator.le, lambda val: bool_(val))),
+        '__gt__': funcs.BindableFunc(_FloatFunc('__gt__', operator.gt, lambda val: bool_(val))),
+        '__ge__': funcs.BindableFunc(_FloatFunc('__ge__', operator.ge, lambda val: bool_(val))),
     }),
     FloatObject,
 )
@@ -137,7 +148,6 @@ def float_(value: float) -> vals.Object:
     return FloatClass.instantiate(value)
 
 
-@dataclass(frozen=True)
 class StrObject(_ValueObject[str]):
     '''str builtin'''
 
@@ -176,7 +186,6 @@ def str_(value: str) -> vals.Object:
     return StrClass.instantiate(value)
 
 
-@dataclass(frozen=True)
 class BoolObject(_ValueObject[bool]):
     '''bool builtin'''
 
