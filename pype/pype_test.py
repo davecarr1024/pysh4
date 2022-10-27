@@ -95,11 +95,43 @@ class PypeTest(unittest.TestCase):
                 builtins_.int_(1),
             ),
             (
+                '1 == 1;',
+                builtins_.true,
+            ),
+            (
+                '1 == 2;',
+                builtins_.false,
+            ),
+            (
+                '1 < 2;',
+                builtins_.true,
+            ),
+            (
+                '2 < 1;',
+                builtins_.false,
+            ),
+            (
+                '1 <= 1;',
+                builtins_.true,
+            ),
+            (
+                '2 <= 1;',
+                builtins_.false,
+            ),
+            (
                 '2 > 1;',
                 builtins_.true,
             ),
             (
                 '1 > 2;',
+                builtins_.false,
+            ),
+            (
+                '1 >= 1;',
+                builtins_.true,
+            ),
+            (
+                '1 >= 2;',
                 builtins_.false,
             ),
             (
@@ -143,46 +175,6 @@ class PypeTest(unittest.TestCase):
                 a;
                 ''',
                 builtins_.int_(1),
-            ),
-            (
-                '1 == 1;',
-                builtins_.true,
-            ),
-            (
-                '1 == 2;',
-                builtins_.false,
-            ),
-            (
-                '1 < 2;',
-                builtins_.true,
-            ),
-            (
-                '2 < 1;',
-                builtins_.false,
-            ),
-            (
-                '1 <= 1;',
-                builtins_.true,
-            ),
-            (
-                '2 <= 1;',
-                builtins_.false,
-            ),
-            (
-                '2 > 1;',
-                builtins_.true,
-            ),
-            (
-                '1 > 2;',
-                builtins_.false,
-            ),
-            (
-                '1 >= 1;',
-                builtins_.true,
-            ),
-            (
-                '1 >= 2;',
-                builtins_.false,
             ),
         ]):
             with self.subTest(input=input, result=result):
