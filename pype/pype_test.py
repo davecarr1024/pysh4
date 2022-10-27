@@ -176,6 +176,10 @@ class PypeTest(unittest.TestCase):
                 ''',
                 builtins_.int_(1),
             ),
+            (
+                '4 - (2 + 1);',
+                builtins_.int_(1),
+            ),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(pype.eval(input), result)

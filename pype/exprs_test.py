@@ -650,6 +650,59 @@ class BinaryOperationTest(unittest.TestCase):
                 )
 
 
+class ParenExpr(unittest.TestCase):
+    def test_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[exprs.Expr]]]([
+            (
+                lexer.TokenStream([
+                    _tok('('),
+                    _tok('a', 'id'),
+                    _tok(')'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.ParenExpr(
+                        exprs.ref('a')
+                    ),
+                ),
+            ),
+            (
+                lexer.TokenStream([
+                    _tok('('),
+                    _tok('a', 'id'),
+                    _tok('+'),
+                    _tok('('),
+                    _tok('b', 'id'),
+                    _tok('-'),
+                    _tok('c', 'id'),
+                    _tok(')'),
+                    _tok(')'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.ParenExpr(
+                        exprs.BinaryOperation(
+                            exprs.BinaryOperation.Operator.ADD,
+                            exprs.ref('a'),
+                            exprs.ParenExpr(
+                                exprs.BinaryOperation(
+                                    exprs.BinaryOperation.Operator.SUB,
+                                    exprs.ref('b'),
+                                    exprs.ref('c'),
+                                )
+                            )
+                        )
+                    ),
+                ),
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    exprs.ParenExpr.load(exprs.Expr.default_scope(), state),
+                    result
+                )
+
+
 class ExprTest(unittest.TestCase):
     def test_load(self):
         for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[exprs.Expr]]]([

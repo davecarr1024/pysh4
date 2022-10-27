@@ -16,15 +16,22 @@ class Expr(ABC):
     def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
         return parser.Or[Expr]([
             BinaryOperation.load,
-            Ref.load,
+            Expr.load_operand,
         ])(scope, state)
 
     @staticmethod
     def default_scope() -> parser.Scope['Expr']:
         return parser.Scope[Expr]({
             'expr': Expr.load,
-            'operand': Ref.load,
+            'operand': Expr.load_operand,
         })
+
+    @staticmethod
+    def load_operand(scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
+        return parser.Or[Expr]([
+            Ref.load,
+            ParenExpr.load,
+        ])(scope, state)
 
     @staticmethod
     def load_state(state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
@@ -304,3 +311,21 @@ class BinaryOperation(Expr):
         operator = BinaryOperation.Operator(operator_value)
         state, rhs = parser.Ref[Expr]('operand')(scope, state)
         return state, BinaryOperation(operator, lhs, rhs)
+
+
+@dataclass(frozen=True, repr=False)
+class ParenExpr(Expr):
+    value: Expr
+
+    def __repr__(self) -> str:
+        return f'({self.value})'
+
+    def eval(self, scope: vals.Scope) -> vals.Val:
+        return self.value.eval(scope)
+
+    @classmethod
+    def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult[Expr]:
+        state = parser.consume_token(state, '(')
+        state, value = Expr.load(scope, state)
+        state = parser.consume_token(state, ')')
+        return state, ParenExpr(value)
