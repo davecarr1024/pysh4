@@ -180,6 +180,21 @@ class PypeTest(unittest.TestCase):
                 '4 - (2 + 1);',
                 builtins_.int_(1),
             ),
+            (
+                r'''
+                def exp(a, n) {
+                    i = 1;
+                    r = a;
+                    while (i < n) {
+                        i = i + 1;
+                        r = r * a;
+                    }
+                    return r;
+                }
+                exp(2,10);
+                ''',
+                builtins_.int_(1024)
+            ),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(pype.eval(input), result)

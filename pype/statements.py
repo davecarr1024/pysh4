@@ -31,6 +31,7 @@ class Statement(ABC):
             Expr.load,
             func.Decl.load,
             If.load,
+            While.load,
         ])(scope, state)
 
     @staticmethod
@@ -235,3 +236,28 @@ class If(Statement):
         state, alternative = parser.ZeroOrOne[Block](load_alternative)(
             parser.Scope[Block]({}), state)
         return state, If(cond, consequent, alternative)
+
+
+@dataclass(frozen=True, repr=False)
+class While(Statement):
+    cond: exprs.Expr
+    body: Block
+
+    def __repr__(self) -> str:
+        return f'while ({self.cond}) {self.body}'
+
+    def eval(self, scope: vals.Scope) -> Result:
+        while builtins_.Bool.from_val(scope, self.cond.eval(scope)):
+            result = self.body.eval(scope)
+            if result.return_ is not None:
+                return result
+        return Result()
+
+    @classmethod
+    def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
+        state = parser.consume_token(state, 'while')
+        state = parser.consume_token(state, '(')
+        state, cond = exprs.Expr.load_state(state)
+        state = parser.consume_token(state, ')')
+        state, body = Block.load(state)
+        return state, While(cond, body)

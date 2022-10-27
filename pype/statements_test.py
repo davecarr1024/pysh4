@@ -426,3 +426,73 @@ class IfTest(unittest.TestCase):
                     ),
                     result
                 )
+
+
+class WhileTest(unittest.TestCase):
+    def test_eval(self):
+        scope = vals.Scope({'a': builtins_.int_(1), 'b': builtins_.int_(1)})
+        statements.While(
+            exprs.BinaryOperation(
+                exprs.BinaryOperation.Operator.LT,
+                exprs.ref('a'),
+                exprs.literal(builtins_.int_(10)),
+            ),
+            statements.Block([
+                statements.Assignment(
+                    exprs.ref('a'),
+                    exprs.BinaryOperation(
+                        exprs.BinaryOperation.Operator.ADD,
+                        exprs.ref('a'),
+                        exprs.literal(builtins_.int_(1)),
+                    )
+                ),
+                statements.Assignment(
+                    exprs.ref('b'),
+                    exprs.BinaryOperation(
+                        exprs.BinaryOperation.Operator.MUL,
+                        exprs.ref('b'),
+                        exprs.literal(builtins_.int_(2)),
+                    )
+                ),
+            ]),
+        ).eval(scope)
+        self.assertEqual(scope['a'], builtins_.int_(10))
+        self.assertEqual(scope['b'], builtins_.int_(512))
+
+    def test_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[statements.Statement]]]([
+            (
+                lexer.TokenStream([
+                    _tok('while'),
+                    _tok('('),
+                    _tok('false', 'id'),
+                    _tok(')'),
+                    _tok('{'),
+                    _tok('a', 'id'),
+                    _tok('='),
+                    _tok('1', 'int'),
+                    _tok(';'),
+                    _tok('}'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    statements.While(
+                        exprs.ref('false'),
+                        statements.Block([
+                            statements.Assignment(
+                                exprs.ref('a'),
+                                exprs.literal(builtins_.int_(1)),
+                            ),
+                        ])
+                    )
+                ),
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    statements.While.load(
+                        statements.Statement.default_scope(),
+                        state,
+                    ),
+                    result
+                )
