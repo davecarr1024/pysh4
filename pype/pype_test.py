@@ -123,6 +123,28 @@ class PypeTest(unittest.TestCase):
                 builtins_.int_(1),
             ),
             (
+                r'''
+                if (true) {
+                    a = 1;
+                } else {
+                    a = 2;
+                }
+                a;
+                ''',
+                builtins_.int_(1),
+            ),
+            (
+                r'''
+                if (false) {
+                    a = 2;
+                } else {
+                    a = 1;
+                }
+                a;
+                ''',
+                builtins_.int_(1),
+            ),
+            (
                 '1 == 1;',
                 builtins_.true,
             ),

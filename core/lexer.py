@@ -70,7 +70,7 @@ ReRange = regex.Range[Char]
 ReScope = regex.Scope[Char]
 
 
-class _ResultCombiner(processor.ResultCombiner[CharStream, TokenStream]):
+class _ResultCombiner(processor.MultipleResultCombiner[CharStream, TokenStream]):
     def __call__(self, scope: Scope, state: CharStream) -> StateAndResult:
         state, results = self.rule(scope, state)
         return state, sum(results, TokenStream())

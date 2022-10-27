@@ -378,6 +378,45 @@ class IfTest(unittest.TestCase):
                     )
                 ),
             ),
+            (
+                lexer.TokenStream([
+                    _tok('if'),
+                    _tok('('),
+                    _tok('false', 'id'),
+                    _tok(')'),
+                    _tok('{'),
+                    _tok('a', 'id'),
+                    _tok('='),
+                    _tok('1', 'int'),
+                    _tok(';'),
+                    _tok('}'),
+                    _tok('else'),
+                    _tok('{'),
+                    _tok('a', 'id'),
+                    _tok('='),
+                    _tok('2', 'int'),
+                    _tok(';'),
+                    _tok('}'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    statements.If(
+                        exprs.ref('false'),
+                        statements.Block([
+                            statements.Assignment(
+                                exprs.ref('a'),
+                                exprs.literal(builtins_.int_(1)),
+                            ),
+                        ]),
+                        statements.Block([
+                            statements.Assignment(
+                                exprs.ref('a'),
+                                exprs.literal(builtins_.int_(2)),
+                            ),
+                        ]),
+                    )
+                ),
+            ),
         ]):
             with self.subTest(state=state, result=result):
                 self.assertEqual(

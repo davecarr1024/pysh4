@@ -127,13 +127,10 @@ class Return(Statement):
     @classmethod
     def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
         state = parser.consume_token(state, 'return')
-        state, values = parser.ZeroOrOne[exprs.Expr](
+        state, value = parser.ZeroOrOne[exprs.Expr](
             exprs.Expr.load)(exprs.Expr.default_scope(), state)
         state = parser.consume_token(state, ';')
-        if values:
-            return state, Return(values[0])
-        else:
-            return state, Return()
+        return state, Return(value=value)
 
 
 @dataclass(frozen=True)
@@ -229,4 +226,12 @@ class If(Statement):
         state, cond = exprs.Expr.load_state(state)
         state = parser.consume_token(state, ')')
         state, consequent = Block.load(state)
-        return state, If(cond, consequent)
+
+        def load_alternative(_: parser.Scope[Block], state: lexer.TokenStream) -> parser.StateAndResult[Block]:
+            state = parser.consume_token(state, 'else')
+            state, alternative = Block.load(state)
+            return state, alternative
+
+        state, alternative = parser.ZeroOrOne[Block](load_alternative)(
+            parser.Scope[Block]({}), state)
+        return state, If(cond, consequent, alternative)

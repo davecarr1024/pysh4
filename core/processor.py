@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Generic, Iterable, Iterator, Mapping, MutableSequence, Sequence, Sized, TypeVar
+from typing import Callable, Generic, Iterable, Iterator, Mapping, MutableSequence, Optional, Sequence, Sized, TypeVar
 from . import errors
 
 
@@ -21,6 +21,10 @@ MultipleResultRule = Callable[
     ],
     StateAndMultipleResult[_State, _Result]
 ]
+
+StateAndOptionalResult = tuple[_State, Optional[_Result]]
+OptionalResultRule = Callable[['Scope[_State,_Result]',
+                               _State], StateAndOptionalResult[_State, _Result]]
 
 
 @dataclass(frozen=True, kw_only=True, repr=False)
@@ -90,6 +94,12 @@ class AbstractMultipleResultRule(Generic[_State, _Result], ABC):
         ...
 
 
+class AbstractOptionalResultRule(Generic[_State, _Result], ABC):
+    @abstractmethod
+    def __call__(self, scope: Scope[_State, _Result], state: _State) -> StateAndOptionalResult[_State, _Result]:
+        ...
+
+
 @dataclass(frozen=True)
 class Processor(Scope[_State, _Result], AbstractRule[_State, _Result]):
     root_rule_name: str
@@ -143,6 +153,17 @@ class NaryMultipleResultRule(Generic[_State, _Result], Iterable[Rule[_State, _Re
 
 
 @dataclass(frozen=True)
+class NaryOptionalResultRule(Generic[_State, _Result], Iterable[Rule[_State, _Result]], Sized, AbstractOptionalResultRule[_State, _Result]):
+    rules: Sequence[Rule[_State, _Result]]
+
+    def __len__(self) -> int:
+        return len(self.rules)
+
+    def __iter__(self) -> Iterator[Rule[_State, _Result]]:
+        return iter(self.rules)
+
+
+@dataclass(frozen=True)
 class UnaryRule(Generic[_State, _Result], AbstractRule[_State, _Result]):
     rule: Rule[_State, _Result]
 
@@ -152,9 +173,26 @@ class UnaryMultipleResultRule(Generic[_State, _Result], AbstractMultipleResultRu
     rule: Rule[_State, _Result]
 
 
+@dataclass(frozen=True)
+class UnaryOptionalResultRule(Generic[_State, _Result], AbstractOptionalResultRule[_State, _Result]):
+    rule: Rule[_State, _Result]
+
+
 @dataclass(frozen=True, repr=False)
-class ResultCombiner(AbstractRule[_State, _Result], ABC):
+class MultipleResultCombiner(AbstractRule[_State, _Result], ABC):
     rule: MultipleResultRule[_State, _Result]
+
+    def __repr__(self) -> str:
+        return repr(self.rule)
+
+    @abstractmethod
+    def __call__(self, scope: Scope[_State, _Result], state: _State) -> StateAndResult[_State, _Result]:
+        ...
+
+
+@dataclass(frozen=True, repr=False)
+class OptionalResultCombiner(AbstractRule[_State, _Result], ABC):
+    rule: OptionalResultRule[_State, _Result]
 
     def __repr__(self) -> str:
         return repr(self.rule)
@@ -220,13 +258,13 @@ class OneOrMore(UnaryMultipleResultRule[_State, _Result]):
                 return state, results
 
 
-class ZeroOrOne(UnaryMultipleResultRule[_State, _Result]):
+class ZeroOrOne(UnaryOptionalResultRule[_State, _Result]):
     def __repr__(self) -> str:
         return f'{self.rule}?'
 
-    def __call__(self, scope: Scope[_State, _Result], state: _State) -> StateAndMultipleResult[_State, _Result]:
+    def __call__(self, scope: Scope[_State, _Result], state: _State) -> StateAndOptionalResult[_State, _Result]:
         try:
             state, result = self.rule(scope, state)
-            return state, [result]
+            return state, result
         except errors.Error:
-            return state, []
+            return state, None

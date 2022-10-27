@@ -7,6 +7,7 @@ _State = Sequence[int]
 _Result = int
 _StateAndResult = processor.StateAndResult[_State, _Result]
 _StateAndMultipleResult = processor.StateAndMultipleResult[_State, _Result]
+_StateAndOptionalResult = processor.StateAndOptionalResult[_State, _Result]
 _Rule = processor.Rule[_State, _Result]
 _Scope = processor.Scope[_State, _Result]
 
@@ -24,7 +25,7 @@ class Eq:
 
 
 @dataclass(frozen=True)
-class _ResultCombiner(processor.ResultCombiner[_State, _Result]):
+class _ResultCombiner(processor.MultipleResultCombiner[_State, _Result]):
     def __call__(self, scope: _Scope, state: _State) -> _StateAndResult:
         state, results = self.rule(scope, state)
         return state, sum(results)
@@ -211,11 +212,11 @@ class OneOrMoreTest(unittest.TestCase):
 
 class ZeroOrOneTest(unittest.TestCase):
     def test_apply(self):
-        for state, output in list[Tuple[_State, _StateAndMultipleResult]]([
-            ([], ([], [])),
-            ([1], ([], [1])),
-            ([2], ([2], [])),
-            ([1, 2], ([2], [1])),
+        for state, output in list[Tuple[_State, _StateAndOptionalResult]]([
+            ([], ([], None)),
+            ([1], ([], 1)),
+            ([2], ([2], None)),
+            ([1, 2], ([2], 1)),
         ]):
             with self.subTest(state=state, output=output):
                 self.assertEqual(

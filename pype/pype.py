@@ -18,6 +18,7 @@ def eval(input: str, scope: Optional[vals.Scope] = None) -> vals.Val:
         'return',
         'namespace',
         'if',
+        'else',
     ]
     _, tokens = lexer.Lexer(
 

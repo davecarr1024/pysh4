@@ -46,33 +46,40 @@ Or = processor.Or[CharStream[_Char], Token]
 
 
 @dataclass(frozen=True, repr=False)
-class _ResultCombiner(processor.ResultCombiner[CharStream[_Char], Token]):
+class _MultipleResultCombiner(processor.MultipleResultCombiner[CharStream[_Char], Token]):
     def __call__(self, scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
         state, results = self.rule(scope, state)
         return state, Token.concat(results)
 
 
-class And(_ResultCombiner[_Char]):
+@dataclass(frozen=True, repr=False)
+class _OptionalResultCombiner(processor.OptionalResultCombiner[CharStream[_Char], Token]):
+    def __call__(self, scope: Scope[_Char], state: CharStream[_Char]) -> StateAndResult[_Char]:
+        state, result = self.rule(scope, state)
+        return state, result or Token('')
+
+
+class And(_MultipleResultCombiner[_Char]):
     def __init__(self, rules: Sequence[Rule[_Char]]):
         super().__init__(processor.And[CharStream[_Char], Token](rules))
 
 
-class ZeroOrMore(_ResultCombiner[_Char]):
+class ZeroOrMore(_MultipleResultCombiner[_Char]):
     def __init__(self, rule: Rule[_Char]):
         super().__init__(processor.ZeroOrMore[CharStream[_Char], Token](rule))
 
 
-class OneOrMore(_ResultCombiner[_Char]):
+class OneOrMore(_MultipleResultCombiner[_Char]):
     def __init__(self, rule: Rule[_Char]):
         super().__init__(processor.OneOrMore[CharStream[_Char], Token](rule))
 
 
-class ZeroOrOne(_ResultCombiner[_Char]):
+class ZeroOrOne(_OptionalResultCombiner[_Char]):
     def __init__(self, rule: Rule[_Char]):
         super().__init__(processor.ZeroOrOne[CharStream[_Char], Token](rule))
 
 
-class UntilEmpty(_ResultCombiner[_Char]):
+class UntilEmpty(_MultipleResultCombiner[_Char]):
     def __init__(self, rule: Rule[_Char]):
         super().__init__(stream.UntilEmpty[CharStream[_Char], Token](rule))
 
