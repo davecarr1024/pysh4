@@ -195,6 +195,14 @@ class PypeTest(unittest.TestCase):
                 ''',
                 builtins_.int_(1024)
             ),
+            (
+                '!false;',
+                builtins_.true,
+            ),
+            (
+                '!true;',
+                builtins_.false,
+            )
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(pype.eval(input), result)

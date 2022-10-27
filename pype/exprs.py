@@ -268,7 +268,37 @@ def ref(name: str) -> Ref:
     return Ref(Ref.Name(name))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
+class UnaryOperation(Expr):
+    class Operator(Enum):
+        NOT = '!'
+
+    operator: Operator
+    operand: Expr
+
+    def __repr__(self) -> str:
+        return f'{self.operator.value}{self.operand}'
+
+    @staticmethod
+    def _func_for_operator(operator: 'UnaryOperation.Operator') -> str:
+        return f'__{operator.name.lower()}__'
+
+    def eval(self, scope: vals.Scope) -> vals.Val:
+        return self.operand.eval(scope)[self._func_for_operator(self.operator)](scope, vals.Args([]))
+
+    @classmethod
+    def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult[Expr]:
+        operator_value = state.head.value
+        if not any(operator.value == operator_value for operator in UnaryOperation.Operator):
+            raise parser.StateError(
+                msg=f'unknown operator {operator_value}', state=state)
+        state = state.tail
+        operator = UnaryOperation.Operator(operator_value)
+        state, operand = parser.Ref[Expr]('operand')(scope, state)
+        return state, UnaryOperation(operator, operand)
+
+
+@dataclass(frozen=True, repr=False)
 class BinaryOperation(Expr):
 
     class Operator(Enum):

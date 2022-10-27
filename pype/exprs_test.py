@@ -650,7 +650,50 @@ class BinaryOperationTest(unittest.TestCase):
                 )
 
 
-class ParenExpr(unittest.TestCase):
+class UnaryOperationTest(unittest.TestCase):
+    def test_eval(self):
+        for op, result in list[Tuple[exprs.UnaryOperation, vals.Val]]([
+            (
+                exprs.UnaryOperation(
+                    exprs.UnaryOperation.Operator.NOT,
+                    exprs.literal(builtins_.true),
+                ),
+                builtins_.false
+            ),
+        ]):
+            with self.subTest(op=op, result=result):
+                self.assertEqual(
+                    op.eval(vals.Scope({})),
+                    result
+                )
+
+    def test_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[exprs.Expr]]]([
+            (
+                lexer.TokenStream([
+                    _tok('!'),
+                    _tok('a', 'id'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.UnaryOperation(
+                        exprs.UnaryOperation.Operator.NOT,
+                        exprs.ref('a'),
+                    )
+                )
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    exprs.UnaryOperation.load(
+                        exprs.Expr.default_scope(),
+                        state
+                    ),
+                    result
+                )
+
+
+class ParenExprTest(unittest.TestCase):
     def test_load(self):
         for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[exprs.Expr]]]([
             (

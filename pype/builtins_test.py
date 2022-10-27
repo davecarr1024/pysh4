@@ -265,6 +265,15 @@ class BoolTest(unittest.TestCase):
             builtins_.true
         )
 
+    def test_not(self):
+        self.assertEqual(
+            builtins_.true['__not__'](
+                vals.Scope({}),
+                vals.Args([])
+            ),
+            builtins_.false
+        )
+
     def test_from_val(self):
         for val, result in list[Tuple[vals.Val, bool]]([
             (builtins_.true, True),

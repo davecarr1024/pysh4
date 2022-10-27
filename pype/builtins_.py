@@ -197,6 +197,7 @@ BoolClass = _Class(
     vals.Scope({
         '__and__': funcs.BindableFunc(_BinaryFunc(operator.and_, Bool.from_val, Bool.from_val)),
         '__or__': funcs.BindableFunc(_BinaryFunc(operator.or_, Bool.from_val, Bool.from_val)),
+        '__not__': funcs.BindableFunc(_UnaryFunc(operator.not_, Bool.from_val)),
     }),
     Bool,
 )
