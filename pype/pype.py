@@ -21,7 +21,6 @@ def eval(input: str, scope: Optional[vals.Scope] = None) -> vals.Val:
         'else',
     ]
     _, tokens = lexer.Lexer(
-
         **({
             operator: regex.literal(operator)
             for operator in operators
