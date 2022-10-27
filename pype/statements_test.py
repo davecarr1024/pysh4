@@ -309,3 +309,81 @@ class NamespaceTest(unittest.TestCase):
                     ),
                     result
                 )
+
+
+class IfTest(unittest.TestCase):
+    def test_eval(self):
+        for if_, expected_scope in list[Tuple[statements.If, vals.Scope]]([
+            (
+                statements.If(
+                    exprs.literal(builtins_.false),
+                    statements.Block([
+                        statements.Assignment(
+                            exprs.ref('a'),
+                            exprs.literal(builtins_.int_(1)),
+                        ),
+                    ])
+                ),
+                vals.Scope({
+                })
+            ),
+            (
+                statements.If(
+                    exprs.literal(builtins_.true),
+                    statements.Block([
+                        statements.Assignment(
+                            exprs.ref('a'),
+                            exprs.literal(builtins_.int_(1)),
+                        ),
+                    ])
+                ),
+                vals.Scope({
+                    'a': builtins_.int_(1),
+                })
+            ),
+        ]):
+            with self.subTest(if_=if_, expected_scope=expected_scope):
+                scope = vals.Scope({})
+                self.assertEqual(
+                    if_.eval(scope),
+                    statements.Result()
+                )
+                self.assertEqual(scope, expected_scope)
+
+    def test_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[statements.Statement]]]([
+            (
+                lexer.TokenStream([
+                    _tok('if'),
+                    _tok('('),
+                    _tok('false', 'id'),
+                    _tok(')'),
+                    _tok('{'),
+                    _tok('a', 'id'),
+                    _tok('='),
+                    _tok('1', 'int'),
+                    _tok(';'),
+                    _tok('}'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    statements.If(
+                        exprs.ref('false'),
+                        statements.Block([
+                            statements.Assignment(
+                                exprs.ref('a'),
+                                exprs.literal(builtins_.int_(1)),
+                            ),
+                        ])
+                    )
+                ),
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    statements.If.load(
+                        statements.Statement.default_scope(),
+                        state,
+                    ),
+                    result
+                )

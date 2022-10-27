@@ -272,10 +272,10 @@ class BinaryOperation(Expr):
         AND = 'and'
         OR = 'or'
         EQ = '=='
-        LT = '<'
         LE = '<='
-        GT = '>'
+        LT = '<'
         GE = '>='
+        GT = '>'
 
     operator: Operator
     lhs: Expr

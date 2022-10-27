@@ -97,10 +97,10 @@ class _BinaryFunc(funcs.AbstractFunc):
         return _ValueObject.to_val(self.func(lhs, rhs))
 
 
-class IntObject(_ValueObject[int]):
+class Int(_ValueObject[int]):
     @classmethod
     def from_val(cls, scope: vals.Scope, val: vals.Val) -> int:
-        if not isinstance(val, IntObject):
+        if not isinstance(val, Int):
             raise errors.Error(msg=f'unintifiable val {val}')
         return val.value
 
@@ -108,18 +108,18 @@ class IntObject(_ValueObject[int]):
 IntClass = _Class(
     'int',
     vals.Scope({
-        '__add__': funcs.BindableFunc(_BinaryFunc(operator.add, IntObject.from_val, IntObject.from_val)),
-        '__sub__': funcs.BindableFunc(_BinaryFunc(operator.sub, IntObject.from_val, IntObject.from_val)),
-        '__mul__': funcs.BindableFunc(_BinaryFunc(operator.mul, IntObject.from_val, IntObject.from_val)),
-        '__div__': funcs.BindableFunc(_BinaryFunc(operator.floordiv, IntObject.from_val, IntObject.from_val)),
-        '__eq__': funcs.BindableFunc(_BinaryFunc(operator.eq, IntObject.from_val, IntObject.from_val)),
-        '__lt__': funcs.BindableFunc(_BinaryFunc(operator.lt, IntObject.from_val, IntObject.from_val)),
-        '__le__': funcs.BindableFunc(_BinaryFunc(operator.le, IntObject.from_val, IntObject.from_val)),
-        '__gt__': funcs.BindableFunc(_BinaryFunc(operator.gt, IntObject.from_val, IntObject.from_val)),
-        '__ge__': funcs.BindableFunc(_BinaryFunc(operator.ge, IntObject.from_val, IntObject.from_val)),
-        '__bool__': funcs.BindableFunc(_UnaryFunc(bool, IntObject.from_val)),
+        '__add__': funcs.BindableFunc(_BinaryFunc(operator.add, Int.from_val, Int.from_val)),
+        '__sub__': funcs.BindableFunc(_BinaryFunc(operator.sub, Int.from_val, Int.from_val)),
+        '__mul__': funcs.BindableFunc(_BinaryFunc(operator.mul, Int.from_val, Int.from_val)),
+        '__div__': funcs.BindableFunc(_BinaryFunc(operator.floordiv, Int.from_val, Int.from_val)),
+        '__eq__': funcs.BindableFunc(_BinaryFunc(operator.eq, Int.from_val, Int.from_val)),
+        '__lt__': funcs.BindableFunc(_BinaryFunc(operator.lt, Int.from_val, Int.from_val)),
+        '__le__': funcs.BindableFunc(_BinaryFunc(operator.le, Int.from_val, Int.from_val)),
+        '__gt__': funcs.BindableFunc(_BinaryFunc(operator.gt, Int.from_val, Int.from_val)),
+        '__ge__': funcs.BindableFunc(_BinaryFunc(operator.ge, Int.from_val, Int.from_val)),
+        '__bool__': funcs.BindableFunc(_UnaryFunc(bool, Int.from_val)),
     }),
-    IntObject,
+    Int,
 )
 
 
@@ -127,15 +127,13 @@ def int_(value: int) -> vals.Object:
     return IntClass.instantiate(value)
 
 
-class FloatObject(_ValueObject[float]):
-    '''float builtin'''
-
-    def __eq__(self, rhs: 'FloatObject') -> bool:
+class Float(_ValueObject[float]):
+    def __eq__(self, rhs: 'Float') -> bool:
         return abs(self.value - rhs.value) < 1e-5
 
     @classmethod
     def from_val(cls, scope: vals.Scope, val: vals.Val) -> float:
-        if not isinstance(val, FloatObject):
+        if not isinstance(val, Float):
             raise errors.Error(msg=f'unfloatifiable val {val}')
         return val.value
 
@@ -143,18 +141,18 @@ class FloatObject(_ValueObject[float]):
 FloatClass = _Class(
     'float',
     vals.Scope({
-        '__add__': funcs.BindableFunc(_BinaryFunc(operator.add, FloatObject.from_val, FloatObject.from_val)),
-        '__sub__': funcs.BindableFunc(_BinaryFunc(operator.sub, FloatObject.from_val, FloatObject.from_val)),
-        '__mul__': funcs.BindableFunc(_BinaryFunc(operator.mul, FloatObject.from_val, FloatObject.from_val)),
-        '__div__': funcs.BindableFunc(_BinaryFunc(operator.truediv, FloatObject.from_val, FloatObject.from_val)),
-        '__eq__': funcs.BindableFunc(_BinaryFunc(operator.eq, FloatObject.from_val, FloatObject.from_val)),
-        '__lt__': funcs.BindableFunc(_BinaryFunc(operator.lt, FloatObject.from_val, FloatObject.from_val)),
-        '__le__': funcs.BindableFunc(_BinaryFunc(operator.le, FloatObject.from_val, FloatObject.from_val)),
-        '__gt__': funcs.BindableFunc(_BinaryFunc(operator.gt, FloatObject.from_val, FloatObject.from_val)),
-        '__ge__': funcs.BindableFunc(_BinaryFunc(operator.ge, FloatObject.from_val, FloatObject.from_val)),
-        '__bool__': funcs.BindableFunc(_UnaryFunc(bool, FloatObject.from_val)),
+        '__add__': funcs.BindableFunc(_BinaryFunc(operator.add, Float.from_val, Float.from_val)),
+        '__sub__': funcs.BindableFunc(_BinaryFunc(operator.sub, Float.from_val, Float.from_val)),
+        '__mul__': funcs.BindableFunc(_BinaryFunc(operator.mul, Float.from_val, Float.from_val)),
+        '__div__': funcs.BindableFunc(_BinaryFunc(operator.truediv, Float.from_val, Float.from_val)),
+        '__eq__': funcs.BindableFunc(_BinaryFunc(operator.eq, Float.from_val, Float.from_val)),
+        '__lt__': funcs.BindableFunc(_BinaryFunc(operator.lt, Float.from_val, Float.from_val)),
+        '__le__': funcs.BindableFunc(_BinaryFunc(operator.le, Float.from_val, Float.from_val)),
+        '__gt__': funcs.BindableFunc(_BinaryFunc(operator.gt, Float.from_val, Float.from_val)),
+        '__ge__': funcs.BindableFunc(_BinaryFunc(operator.ge, Float.from_val, Float.from_val)),
+        '__bool__': funcs.BindableFunc(_UnaryFunc(bool, Float.from_val)),
     }),
-    FloatObject,
+    Float,
 )
 
 
@@ -162,10 +160,10 @@ def float_(value: float) -> vals.Object:
     return FloatClass.instantiate(value)
 
 
-class StrObject(_ValueObject[str]):
+class Str(_ValueObject[str]):
     @classmethod
     def from_val(cls, scope: vals.Scope, val: vals.Val) -> str:
-        if not isinstance(val, StrObject):
+        if not isinstance(val, Str):
             raise errors.Error(msg=f'unstrifiable val {val}')
         return val.value
 
@@ -173,10 +171,10 @@ class StrObject(_ValueObject[str]):
 StrClass = _Class(
     'str',
     vals.Scope({
-        '__add__': funcs.BindableFunc(_BinaryFunc(operator.add, StrObject.from_val, StrObject.from_val)),
-        '__bool__': funcs.BindableFunc(_UnaryFunc(bool, StrObject.from_val)),
+        '__add__': funcs.BindableFunc(_BinaryFunc(operator.add, Str.from_val, Str.from_val)),
+        '__bool__': funcs.BindableFunc(_UnaryFunc(bool, Str.from_val)),
     }),
-    StrObject,
+    Str,
 )
 
 
@@ -184,10 +182,10 @@ def str_(value: str) -> vals.Object:
     return StrClass.instantiate(value)
 
 
-class BoolObject(_ValueObject[bool]):
+class Bool(_ValueObject[bool]):
     @classmethod
     def from_val(cls, scope: vals.Scope, val: vals.Val) -> bool:
-        if isinstance(val, BoolObject):
+        if isinstance(val, Bool):
             return val.value
         if '__bool__' in val:
             return cls.from_val(scope, val['__bool__'](scope,  vals.Args([])))
@@ -197,10 +195,10 @@ class BoolObject(_ValueObject[bool]):
 BoolClass = _Class(
     'bool',
     vals.Scope({
-        '__and__': funcs.BindableFunc(_BinaryFunc(operator.and_, BoolObject.from_val, BoolObject.from_val)),
-        '__or__': funcs.BindableFunc(_BinaryFunc(operator.or_, BoolObject.from_val, BoolObject.from_val)),
+        '__and__': funcs.BindableFunc(_BinaryFunc(operator.and_, Bool.from_val, Bool.from_val)),
+        '__or__': funcs.BindableFunc(_BinaryFunc(operator.or_, Bool.from_val, Bool.from_val)),
     }),
-    BoolObject,
+    Bool,
 )
 
 

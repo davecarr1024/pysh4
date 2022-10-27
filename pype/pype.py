@@ -4,7 +4,7 @@ from . import builtins_, exprs, statements, vals
 
 
 def eval(input: str, scope: Optional[vals.Scope] = None) -> vals.Val:
-    operators: Sequence[str] = [
+    operators: Sequence[str] = [op.value for op in exprs.BinaryOperation.Operator] + [
         '(',
         ')',
         '{',
@@ -17,7 +17,8 @@ def eval(input: str, scope: Optional[vals.Scope] = None) -> vals.Val:
         'class',
         'return',
         'namespace',
-    ] + [op.value for op in exprs.BinaryOperation.Operator]
+        'if',
+    ]
     _, tokens = lexer.Lexer(
 
         **({
@@ -30,7 +31,10 @@ def eval(input: str, scope: Optional[vals.Scope] = None) -> vals.Val:
     _, statements_ = parser.UntilEmpty[statements.Statement](
         statements.Statement.load,
     )(statements.Statement.default_scope(), tokens)
-    scope = scope or vals.Scope({})
+    scope = scope or vals.Scope({
+        'true': builtins_.true,
+        'false': builtins_.false,
+    })
     for statement in statements_[:-1]:
         statement.eval(scope)
     if isinstance(statements_[-1], statements.Expr):

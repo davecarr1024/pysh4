@@ -102,6 +102,66 @@ class PypeTest(unittest.TestCase):
                 '1 > 2;',
                 builtins_.false,
             ),
+            (
+                r'''
+                a = 1;
+                if (false) {
+                    a = 2;
+                }
+                a;
+                ''',
+                builtins_.int_(1),
+            ),
+            (
+                r'''
+                a = 2;
+                if (true) {
+                    a = 1;
+                }
+                a;
+                ''',
+                builtins_.int_(1),
+            ),
+            (
+                '1 == 1;',
+                builtins_.true,
+            ),
+            (
+                '1 == 2;',
+                builtins_.false,
+            ),
+            (
+                '1 < 2;',
+                builtins_.true,
+            ),
+            (
+                '2 < 1;',
+                builtins_.false,
+            ),
+            (
+                '1 <= 1;',
+                builtins_.true,
+            ),
+            (
+                '2 <= 1;',
+                builtins_.false,
+            ),
+            (
+                '2 > 1;',
+                builtins_.true,
+            ),
+            (
+                '1 > 2;',
+                builtins_.false,
+            ),
+            (
+                '1 >= 1;',
+                builtins_.true,
+            ),
+            (
+                '1 >= 2;',
+                builtins_.false,
+            ),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(pype.eval(input), result)

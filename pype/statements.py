@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Iterable, Iterator, Optional, Sequence, Sized, final
-from . import errors, exprs, vals
+from . import errors, builtins_, exprs, vals
 from core import lexer, parser
 
 
@@ -30,6 +30,7 @@ class Statement(ABC):
             Assignment.load,
             Expr.load,
             func.Decl.load,
+            If.load,
         ])(scope, state)
 
     @staticmethod
@@ -177,7 +178,7 @@ class Class(Decl):
     def load(cls, scope: parser.Scope[Statement], state: lexer.TokenStream) -> parser.StateAndResult[Statement]:
         state = parser.consume_token(state, 'class')
         state, name = parser.get_token_value(state, 'id')
-        state, body = Block.loader(scope)(parser.Scope[Block]({}), state)
+        state, body = Block.load(state)
         return state, Class(name, body)
 
 
@@ -203,7 +204,7 @@ class Namespace(Decl):
             state, name = parser.get_token_value(state, 'id')
         except errors.Error:
             pass
-        state, body = Block.loader(scope)(parser.Scope[Block]({}), state)
+        state, body = Block.load(state)
         return state, Namespace(body, _name=name)
 
 
@@ -213,4 +214,19 @@ class If(Statement):
     consequent: Block
     alternative: Optional[Block] = None
 
-    
+    def eval(self, scope: vals.Scope) -> Result:
+        if builtins_.Bool.from_val(scope, self.cond.eval(scope)):
+            return self.consequent.eval(scope)
+        elif self.alternative is not None:
+            return self.alternative.eval(scope)
+        else:
+            return Result()
+
+    @classmethod
+    def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
+        state = parser.consume_token(state, 'if')
+        state = parser.consume_token(state, '(')
+        state, cond = exprs.Expr.load_state(state)
+        state = parser.consume_token(state, ')')
+        state, consequent = Block.load(state)
+        return state, If(cond, consequent)
