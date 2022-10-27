@@ -1,5 +1,6 @@
+from typing import Tuple
 import unittest
-from . import builtins_, vals
+from . import builtins_, errors, vals
 
 
 class IntTest(unittest.TestCase):
@@ -49,23 +50,49 @@ class IntTest(unittest.TestCase):
             builtins_.int_(5)
         )
 
-    def test_lt_true(self):
+    def test_comps(self):
+        for lhs, rhs, func, result in list[Tuple[int, int, str, bool]]([
+            (1, 2, '__lt__', True),
+            (2, 1, '__lt__', False),
+            (1, 1, '__le__', True),
+            (2, 1, '__le__', False),
+            (2, 1, '__gt__', True),
+            (1, 2, '__gt__', False),
+            (1, 1, '__ge__', True),
+            (1, 2, '__ge__', False),
+            (1, 1, '__eq__', True),
+            (1, 2, '__eq__', False),
+        ]):
+            with self.subTest(lhs=lhs, rhs=rhs, func=func, result=result):
+                self.assertEqual(
+                    builtins_.int_(lhs)[func](
+                        vals.Scope({}),
+                        vals.Args([vals.Arg(builtins_.int_(rhs))])
+                    ),
+                    builtins_.bool_(result)
+                )
+
+    def test_intify(self):
         self.assertEqual(
-            builtins_.int_(1)['__lt__'](
-                vals.Scope({}),
-                vals.Args([vals.Arg(builtins_.int_(2))])
-            ),
-            builtins_.true
+            builtins_.IntObject.intify(builtins_.int_(1)),
+            1
         )
 
-    def test_lt_false(self):
-        self.assertEqual(
-            builtins_.int_(2)['__lt__'](
-                vals.Scope({}),
-                vals.Args([vals.Arg(builtins_.int_(1))])
-            ),
-            builtins_.false
-        )
+    def test_intify_fail(self):
+        with self.assertRaises(errors.Error):
+            builtins_.IntObject.intify(builtins_.str_(''))
+
+    def test_bool(self):
+        for val, result in list[Tuple[int, bool]]([
+            (1, True),
+            (0, False),
+        ]):
+            with self.subTest(val=val, result=result):
+                self.assertEqual(
+                    builtins_.int_(val)['__bool__'](
+                        vals.Scope({}), vals.Args([])),
+                    builtins_.bool_(result)
+                )
 
 
 class FloatTest(unittest.TestCase):

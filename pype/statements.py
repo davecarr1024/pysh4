@@ -205,3 +205,12 @@ class Namespace(Decl):
             pass
         state, body = Block.loader(scope)(parser.Scope[Block]({}), state)
         return state, Namespace(body, _name=name)
+
+
+@dataclass(frozen=True)
+class If(Statement):
+    cond: exprs.Expr
+    consequent: Block
+    alternative: Optional[Block] = None
+
+    
