@@ -74,13 +74,13 @@ class IntTest(unittest.TestCase):
 
     def test_intify(self):
         self.assertEqual(
-            builtins_.IntObject.intify(builtins_.int_(1)),
+            builtins_.IntObject.from_val(builtins_.int_(1)),
             1
         )
 
     def test_intify_fail(self):
         with self.assertRaises(errors.Error):
-            builtins_.IntObject.intify(builtins_.str_(''))
+            builtins_.IntObject.from_val(builtins_.str_(''))
 
     def test_bool(self):
         for val, result in list[Tuple[int, bool]]([
@@ -142,6 +142,50 @@ class FloatTest(unittest.TestCase):
             builtins_.float_(0.55)
         )
 
+    def test_comps(self):
+        for lhs, rhs, func, result in list[Tuple[float, float, str, bool]]([
+            (1.1, 1.2, '__lt__', True),
+            (1.2, 1.1, '__lt__', False),
+            (1.1, 1.1, '__le__', True),
+            (1.2, 1.1, '__le__', False),
+            (1.2, 1.1, '__gt__', True),
+            (1.1, 1.2, '__gt__', False),
+            (1.1, 1.1, '__ge__', True),
+            (1.1, 1.2, '__ge__', False),
+            (1.1, 1.1, '__eq__', True),
+            (1.1, 1.2, '__eq__', False),
+        ]):
+            with self.subTest(lhs=lhs, rhs=rhs, func=func, result=result):
+                self.assertEqual(
+                    builtins_.float_(lhs)[func](
+                        vals.Scope({}),
+                        vals.Args([vals.Arg(builtins_.float_(rhs))])
+                    ),
+                    builtins_.bool_(result)
+                )
+
+    def test_floatify(self):
+        self.assertEqual(
+            builtins_.FloatObject.from_val(builtins_.float_(1.1)),
+            1.1
+        )
+
+    def test_floatify_fail(self):
+        with self.assertRaises(errors.Error):
+            builtins_.FloatObject.from_val(builtins_.str_(''))
+
+    def test_bool(self):
+        for val, result in list[Tuple[float, bool]]([
+            (1.1, True),
+            (0, False),
+        ]):
+            with self.subTest(val=val, result=result):
+                self.assertEqual(
+                    builtins_.float_(val)['__bool__'](
+                        vals.Scope({}), vals.Args([])),
+                    builtins_.bool_(result)
+                )
+
 
 class StrTest(unittest.TestCase):
     def test_eq(self):
@@ -162,6 +206,28 @@ class StrTest(unittest.TestCase):
             ),
             builtins_.str_('ab')
         )
+
+    def test_strify(self):
+        self.assertEqual(
+            builtins_.StrObject.from_val(builtins_.str_('a')),
+            'a'
+        )
+
+    def test_strify_fail(self):
+        with self.assertRaises(errors.Error):
+            builtins_.StrObject.from_val(builtins_.false)
+
+    def test_bool(self):
+        for val, result in list[Tuple[str, bool]]([
+            ('a', True),
+            ('', False),
+        ]):
+            with self.subTest(val=val, result=result):
+                self.assertEqual(
+                    builtins_.str_(val)['__bool__'](
+                        vals.Scope({}), vals.Args([])),
+                    builtins_.bool_(result)
+                )
 
 
 class BoolTest(unittest.TestCase):

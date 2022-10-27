@@ -44,14 +44,14 @@ _Value = TypeVar('_Value')
 
 
 @dataclass(frozen=True, repr=False)
-class _ValueObject(_Object, Generic[_Value]):
+class _ValueObject(_Object, Generic[_Value], ABC):
     value: _Value
 
     def __repr__(self) -> str:
         return repr(self.value)
 
     @staticmethod
-    def valify(val: Any) -> vals.Val:
+    def to_val(val: Any) -> vals.Val:
         ctors: Mapping[Type[Any], Callable[[Any], vals.Val]] = {
             bool: bool_,
             int: int_,
@@ -62,6 +62,11 @@ class _ValueObject(_Object, Generic[_Value]):
         if type(val) not in ctors:
             raise errors.Error(msg=f'unvalifiable val {val}')
         return ctors[type(val)](val)
+
+    @classmethod
+    @abstractmethod
+    def from_val(cls, val: vals.Val) -> Any:
+        ...
 
 
 _Extractor = Callable[[vals.Val], Any]
@@ -79,7 +84,7 @@ class _UnaryFunc(funcs.AbstractFunc):
     def __call__(self, scope: vals.Scope, args: vals.Args) -> vals.Val:
         if len(args) != 1:
             raise errors.Error(msg=f'expected 1 arg got {len(args)}')
-        return _ValueObject.valify(self.func(self.extractor(list(args)[0].value)))
+        return _ValueObject.to_val(self.func(self.extractor(list(args)[0].value)))
 
 
 @dataclass(frozen=True)
@@ -98,12 +103,12 @@ class _BinaryFunc(funcs.AbstractFunc):
         lhs_val, rhs_val = (arg.value for arg in args)
         lhs = self.lhs_extractor(lhs_val)
         rhs = self.rhs_extractor(rhs_val)
-        return _ValueObject.valify(self.func(lhs, rhs))
+        return _ValueObject.to_val(self.func(lhs, rhs))
 
 
 class IntObject(_ValueObject[int]):
-    @staticmethod
-    def intify(val: vals.Val) -> int:
+    @classmethod
+    def from_val(cls, val: vals.Val) -> int:
         if not isinstance(val, IntObject):
             raise errors.Error(msg=f'unintifiable val {val}')
         return val.value
@@ -112,16 +117,16 @@ class IntObject(_ValueObject[int]):
 IntClass = _Class(
     'int',
     vals.Scope({
-        '__add__': funcs.BindableFunc(_BinaryFunc(operator.add, IntObject.intify, IntObject.intify)),
-        '__sub__': funcs.BindableFunc(_BinaryFunc(operator.sub, IntObject.intify, IntObject.intify)),
-        '__mul__': funcs.BindableFunc(_BinaryFunc(operator.mul, IntObject.intify, IntObject.intify)),
-        '__div__': funcs.BindableFunc(_BinaryFunc(operator.floordiv, IntObject.intify, IntObject.intify)),
-        '__eq__': funcs.BindableFunc(_BinaryFunc(operator.eq, IntObject.intify, IntObject.intify)),
-        '__lt__': funcs.BindableFunc(_BinaryFunc(operator.lt, IntObject.intify, IntObject.intify)),
-        '__le__': funcs.BindableFunc(_BinaryFunc(operator.le, IntObject.intify, IntObject.intify)),
-        '__gt__': funcs.BindableFunc(_BinaryFunc(operator.gt, IntObject.intify, IntObject.intify)),
-        '__ge__': funcs.BindableFunc(_BinaryFunc(operator.ge, IntObject.intify, IntObject.intify)),
-        '__bool__': funcs.BindableFunc(_UnaryFunc(bool, IntObject.intify)),
+        '__add__': funcs.BindableFunc(_BinaryFunc(operator.add, IntObject.from_val, IntObject.from_val)),
+        '__sub__': funcs.BindableFunc(_BinaryFunc(operator.sub, IntObject.from_val, IntObject.from_val)),
+        '__mul__': funcs.BindableFunc(_BinaryFunc(operator.mul, IntObject.from_val, IntObject.from_val)),
+        '__div__': funcs.BindableFunc(_BinaryFunc(operator.floordiv, IntObject.from_val, IntObject.from_val)),
+        '__eq__': funcs.BindableFunc(_BinaryFunc(operator.eq, IntObject.from_val, IntObject.from_val)),
+        '__lt__': funcs.BindableFunc(_BinaryFunc(operator.lt, IntObject.from_val, IntObject.from_val)),
+        '__le__': funcs.BindableFunc(_BinaryFunc(operator.le, IntObject.from_val, IntObject.from_val)),
+        '__gt__': funcs.BindableFunc(_BinaryFunc(operator.gt, IntObject.from_val, IntObject.from_val)),
+        '__ge__': funcs.BindableFunc(_BinaryFunc(operator.ge, IntObject.from_val, IntObject.from_val)),
+        '__bool__': funcs.BindableFunc(_UnaryFunc(bool, IntObject.from_val)),
     }),
     IntObject,
 )
@@ -137,41 +142,26 @@ class FloatObject(_ValueObject[float]):
     def __eq__(self, rhs: 'FloatObject') -> bool:
         return abs(self.value - rhs.value) < 1e-5
 
-
-@ dataclass(frozen=True)
-class _FloatFunc(_Func, ABC):
-    name: str
-    func: Callable[[float, float], float]
-    return_factory: Callable[[Any], vals.Val] = lambda val: int_(val)
-
-    @ property
-    def params(self) -> params.Params:
-        return params.Params([params.Param('self'), params.Param('rhs')])
-
-    @ staticmethod
-    def _float_arg(arg: vals.Val) -> FloatObject:
-        if not isinstance(arg, FloatObject):
-            raise errors.Error(msg=f'invalid float func arg {arg}')
-        return arg
-
-    def apply(self, scope: vals.Scope, args: vals.Scope) -> vals.Val:
-        self_ = self._float_arg(args['self']).value
-        rhs = self._float_arg(args['rhs']).value
-        return self.return_factory(self.func(self_, rhs))
+    @classmethod
+    def from_val(cls, val: vals.Val) -> float:
+        if not isinstance(val, FloatObject):
+            raise errors.Error(msg=f'unfloatifiable val {val}')
+        return val.value
 
 
 FloatClass = _Class(
     'float',
     vals.Scope({
-        '__add__': funcs.BindableFunc(_FloatFunc('__add__', operator.add)),
-        '__sub__': funcs.BindableFunc(_FloatFunc('__sub__', operator.sub)),
-        '__mul__': funcs.BindableFunc(_FloatFunc('__mul__', operator.mul)),
-        '__div__': funcs.BindableFunc(_FloatFunc('__div__', operator.truediv)),
-        '__eq__': funcs.BindableFunc(_FloatFunc('__eq__', operator.eq, lambda val: bool_(val))),
-        '__lt__': funcs.BindableFunc(_FloatFunc('__lt__', operator.lt, lambda val: bool_(val))),
-        '__le__': funcs.BindableFunc(_FloatFunc('__le__', operator.le, lambda val: bool_(val))),
-        '__gt__': funcs.BindableFunc(_FloatFunc('__gt__', operator.gt, lambda val: bool_(val))),
-        '__ge__': funcs.BindableFunc(_FloatFunc('__ge__', operator.ge, lambda val: bool_(val))),
+        '__add__': funcs.BindableFunc(_BinaryFunc(operator.add, FloatObject.from_val, FloatObject.from_val)),
+        '__sub__': funcs.BindableFunc(_BinaryFunc(operator.sub, FloatObject.from_val, FloatObject.from_val)),
+        '__mul__': funcs.BindableFunc(_BinaryFunc(operator.mul, FloatObject.from_val, FloatObject.from_val)),
+        '__div__': funcs.BindableFunc(_BinaryFunc(operator.truediv, FloatObject.from_val, FloatObject.from_val)),
+        '__eq__': funcs.BindableFunc(_BinaryFunc(operator.eq, FloatObject.from_val, FloatObject.from_val)),
+        '__lt__': funcs.BindableFunc(_BinaryFunc(operator.lt, FloatObject.from_val, FloatObject.from_val)),
+        '__le__': funcs.BindableFunc(_BinaryFunc(operator.le, FloatObject.from_val, FloatObject.from_val)),
+        '__gt__': funcs.BindableFunc(_BinaryFunc(operator.gt, FloatObject.from_val, FloatObject.from_val)),
+        '__ge__': funcs.BindableFunc(_BinaryFunc(operator.ge, FloatObject.from_val, FloatObject.from_val)),
+        '__bool__': funcs.BindableFunc(_UnaryFunc(bool, FloatObject.from_val)),
     }),
     FloatObject,
 )
@@ -182,34 +172,18 @@ def float_(value: float) -> vals.Object:
 
 
 class StrObject(_ValueObject[str]):
-    '''str builtin'''
-
-
-@ dataclass(frozen=True)
-class _StrFunc(_Func, ABC):
-    name: str
-    func: Callable[[str, str], str]
-
-    @ property
-    def params(self) -> params.Params:
-        return params.Params([params.Param('self'), params.Param('rhs')])
-
-    @ staticmethod
-    def _str_arg(arg: vals.Val) -> StrObject:
-        if not isinstance(arg, StrObject):
-            raise errors.Error(msg=f'invalid str func arg {arg}')
-        return arg
-
-    def apply(self, scope: vals.Scope, args: vals.Scope) -> vals.Val:
-        self_ = self._str_arg(args['self']).value
-        rhs = self._str_arg(args['rhs']).value
-        return str_(self.func(self_, rhs))
+    @classmethod
+    def from_val(cls, val: vals.Val) -> str:
+        if not isinstance(val, StrObject):
+            raise errors.Error(msg=f'unstrifiable val {val}')
+        return val.value
 
 
 StrClass = _Class(
     'str',
     vals.Scope({
-        '__add__': funcs.BindableFunc(_StrFunc('__add__', operator.add)),
+        '__add__': funcs.BindableFunc(_BinaryFunc(operator.add, StrObject.from_val, StrObject.from_val)),
+        '__bool__': funcs.BindableFunc(_UnaryFunc(bool, StrObject.from_val)),
     }),
     StrObject,
 )
@@ -220,9 +194,13 @@ def str_(value: str) -> vals.Object:
 
 
 class BoolObject(_ValueObject[bool]):
-    '''bool builtin'''
+    @classmethod
+    def from_val(cls, val: vals.Val) -> bool:
+        if not isinstance(val, BoolObject):
+            raise errors.Error(msg=f'unboolifiable val {val}')
+        return val.value
 
-    @ staticmethod
+    @staticmethod
     def boolify(scope: vals.Scope, val: vals.Val) -> bool:
         if isinstance(val, BoolObject):
             return val.value
@@ -231,32 +209,11 @@ class BoolObject(_ValueObject[bool]):
         raise errors.Error(msg=f'unboolifiable val {val}')
 
 
-@ dataclass(frozen=True)
-class _BoolFunc(_Func, ABC):
-    name: str
-    func: Callable[[bool, bool], bool]
-
-    @ property
-    def params(self) -> params.Params:
-        return params.Params([params.Param('self'), params.Param('rhs')])
-
-    @ staticmethod
-    def _bool_arg(arg: vals.Val) -> BoolObject:
-        if not isinstance(arg, BoolObject):
-            raise errors.Error(msg=f'invalid bool func arg {arg}')
-        return arg
-
-    def apply(self, scope: vals.Scope, args: vals.Scope) -> vals.Val:
-        self_ = self._bool_arg(args['self']).value
-        rhs = self._bool_arg(args['rhs']).value
-        return bool_(self.func(self_, rhs))
-
-
 BoolClass = _Class(
     'bool',
     vals.Scope({
-        '__and__': funcs.BindableFunc(_BoolFunc('__and__', operator.and_)),
-        '__or__': funcs.BindableFunc(_BoolFunc('__or__', operator.or_)),
+        '__and__': funcs.BindableFunc(_BinaryFunc(operator.and_, BoolObject.from_val, BoolObject.from_val)),
+        '__or__': funcs.BindableFunc(_BinaryFunc(operator.or_, BoolObject.from_val, BoolObject.from_val)),
     }),
     BoolObject,
 )
