@@ -31,15 +31,6 @@ class _Object(vals.Object):
     _members: vals.Scope = field(compare=False, repr=False)
 
 
-class _Func(funcs.AbstractFunc, ABC):
-    @abstractmethod
-    def apply(self, scope: vals.Scope, args: vals.Scope) -> vals.Val:
-        ...
-
-    def __call__(self, scope: vals.Scope, args: vals.Args) -> vals.Val:
-        return self.apply(scope, self.params.bind(vals.Scope(), args))
-
-
 _Value = TypeVar('_Value')
 
 
@@ -65,11 +56,11 @@ class _ValueObject(_Object, Generic[_Value], ABC):
 
     @classmethod
     @abstractmethod
-    def from_val(cls, val: vals.Val) -> Any:
+    def from_val(cls, scope: vals.Scope, val: vals.Val) -> Any:
         ...
 
 
-_Extractor = Callable[[vals.Val], Any]
+_Extractor = Callable[[vals.Scope, vals.Val], Any]
 
 
 @dataclass(frozen=True)
@@ -84,7 +75,7 @@ class _UnaryFunc(funcs.AbstractFunc):
     def __call__(self, scope: vals.Scope, args: vals.Args) -> vals.Val:
         if len(args) != 1:
             raise errors.Error(msg=f'expected 1 arg got {len(args)}')
-        return _ValueObject.to_val(self.func(self.extractor(list(args)[0].value)))
+        return _ValueObject.to_val(self.func(self.extractor(scope, list(args)[0].value)))
 
 
 @dataclass(frozen=True)
@@ -101,14 +92,14 @@ class _BinaryFunc(funcs.AbstractFunc):
         if len(args) != 2:
             raise errors.Error(msg=f'expected 2 arg got {len(args)}')
         lhs_val, rhs_val = (arg.value for arg in args)
-        lhs = self.lhs_extractor(lhs_val)
-        rhs = self.rhs_extractor(rhs_val)
+        lhs = self.lhs_extractor(scope, lhs_val)
+        rhs = self.rhs_extractor(scope, rhs_val)
         return _ValueObject.to_val(self.func(lhs, rhs))
 
 
 class IntObject(_ValueObject[int]):
     @classmethod
-    def from_val(cls, val: vals.Val) -> int:
+    def from_val(cls, scope: vals.Scope, val: vals.Val) -> int:
         if not isinstance(val, IntObject):
             raise errors.Error(msg=f'unintifiable val {val}')
         return val.value
@@ -143,7 +134,7 @@ class FloatObject(_ValueObject[float]):
         return abs(self.value - rhs.value) < 1e-5
 
     @classmethod
-    def from_val(cls, val: vals.Val) -> float:
+    def from_val(cls, scope: vals.Scope, val: vals.Val) -> float:
         if not isinstance(val, FloatObject):
             raise errors.Error(msg=f'unfloatifiable val {val}')
         return val.value
@@ -173,7 +164,7 @@ def float_(value: float) -> vals.Object:
 
 class StrObject(_ValueObject[str]):
     @classmethod
-    def from_val(cls, val: vals.Val) -> str:
+    def from_val(cls, scope: vals.Scope, val: vals.Val) -> str:
         if not isinstance(val, StrObject):
             raise errors.Error(msg=f'unstrifiable val {val}')
         return val.value
@@ -195,17 +186,11 @@ def str_(value: str) -> vals.Object:
 
 class BoolObject(_ValueObject[bool]):
     @classmethod
-    def from_val(cls, val: vals.Val) -> bool:
-        if not isinstance(val, BoolObject):
-            raise errors.Error(msg=f'unboolifiable val {val}')
-        return val.value
-
-    @staticmethod
-    def boolify(scope: vals.Scope, val: vals.Val) -> bool:
+    def from_val(cls, scope: vals.Scope, val: vals.Val) -> bool:
         if isinstance(val, BoolObject):
             return val.value
         if '__bool__' in val:
-            return BoolObject.boolify(scope, val['__bool__'](scope,  vals.Args([])))
+            return cls.from_val(scope, val['__bool__'](scope,  vals.Args([])))
         raise errors.Error(msg=f'unboolifiable val {val}')
 
 
