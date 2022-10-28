@@ -853,3 +853,41 @@ class IncTest(unittest.TestCase):
             with self.subTest(state=state, result=result):
                 self.assertEqual(exprs.Inc.load(
                     exprs.Expr.default_scope(), state), result)
+
+
+class AssignmentTest(unittest.TestCase):
+    def test_eval(self):
+        for assignment, val in list[Tuple[exprs.Assignment, vals.Val]]([
+            (
+                exprs.Assignment(
+                    exprs.ref('a'),
+                    exprs.literal(builtins_.int_(1)),
+                ),
+                builtins_.int_(1),
+            ),
+        ]):
+            with self.subTest(assignment=assignment, val=val):
+                scope = vals.Scope({'a': builtins_.int_(0)})
+                self.assertEqual(assignment.eval(scope), val)
+                self.assertEqual(assignment.ref.eval(scope), val)
+
+    def test_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[exprs.Expr]]]([
+            (
+                lexer.TokenStream([
+                    _tok('a', 'id'),
+                    _tok('='),
+                    _tok('1', 'int'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.Assignment(
+                        exprs.ref('a'),
+                        exprs.literal(builtins_.int_(1)),
+                    ),
+                )
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(exprs.Assignment.load(
+                    exprs.Expr.default_scope(), state), result)

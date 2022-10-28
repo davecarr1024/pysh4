@@ -211,6 +211,19 @@ class PypeTest(unittest.TestCase):
             ('a = 0; --a;', builtins_.int_(-1)),
             ('a = 0; a--; a;', builtins_.int_(-1)),
             ('a = 0; a--;', builtins_.int_(0)),
+            (
+                r'''
+                def exp(a, n) {
+                    r = a;
+                    for (i = 1; i < n; ++i) {
+                        r = r * a;
+                    }
+                    return r;
+                }
+                exp(2,10);
+                ''',
+                builtins_.int_(1024)
+            ),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(pype.eval(input), result)

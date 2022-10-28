@@ -115,7 +115,7 @@ class ClassTest(unittest.TestCase):
                         '__init__',
                         params.Params([params.Param('self')]),
                         statements.Block([
-                            statements.Assignment(
+                            statements.assignment(
                                 exprs.Ref(
                                     exprs.Ref.Name('self'),
                                     [exprs.Ref.Member('a')]

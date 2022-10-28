@@ -26,6 +26,7 @@ def eval(input: str, scope: Optional[vals.Scope] = None) -> vals.Val:
         'if',
         'else',
         'while',
+        'for',
     ]
     _, tokens = lexer.Lexer(
         **({
@@ -44,7 +45,7 @@ def eval(input: str, scope: Optional[vals.Scope] = None) -> vals.Val:
     })
     for statement in statements_[:-1]:
         statement.eval(scope)
-    if isinstance(statements_[-1], statements.Expr):
+    if isinstance(statements_[-1], statements.ExprStatement):
         return statements_[-1].value.eval(scope)
     statements_[-1].eval(scope)
     return builtins_.none

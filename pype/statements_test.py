@@ -11,7 +11,7 @@ def _tok(value: str, rule_name: Optional[str] = None) -> lexer.Token:
 class ExprTest(unittest.TestCase):
     def test_eval(self):
         self.assertEqual(
-            statements.Expr(
+            statements.ExprStatement(
                 exprs.literal(builtins_.int_(1))
             ).eval(vals.Scope({})),
             statements.Result()
@@ -19,7 +19,7 @@ class ExprTest(unittest.TestCase):
 
     def test_load(self):
         self.assertEqual(
-            statements.Expr.load(
+            statements.ExprStatement.load(
                 statements.Statement.default_scope(),
                 lexer.TokenStream([
                     _tok('1', 'int'),
@@ -28,7 +28,7 @@ class ExprTest(unittest.TestCase):
             ),
             (
                 lexer.TokenStream(),
-                statements.Expr(
+                statements.ExprStatement(
                     exprs.literal(builtins_.int_(1))
                 )
             )
@@ -38,7 +38,7 @@ class ExprTest(unittest.TestCase):
 class AssignmentTest(unittest.TestCase):
     def test_eval(self):
         scope = vals.Scope({})
-        statements.Assignment(
+        statements.assignment(
             exprs.ref('a'),
             exprs.literal(builtins_.int_(1))
         ).eval(scope)
@@ -46,7 +46,7 @@ class AssignmentTest(unittest.TestCase):
 
     def test_load(self):
         self.assertEqual(
-            statements.Assignment.load(
+            statements.Statement.load(
                 statements.Statement.default_scope(),
                 lexer.TokenStream([
                     _tok('a', 'id'),
@@ -57,7 +57,7 @@ class AssignmentTest(unittest.TestCase):
             ),
             (
                 lexer.TokenStream(),
-                statements.Assignment(
+                statements.assignment(
                     exprs.ref('a'),
                     exprs.literal(builtins_.int_(1)),
                 ),
@@ -161,7 +161,7 @@ class ClassTest(unittest.TestCase):
             statements.Class(
                 'c',
                 statements.Block([
-                    statements.Assignment(
+                    statements.assignment(
                         exprs.ref('a'),
                         exprs.literal(builtins_.int_(1)),
                     ),
@@ -199,7 +199,7 @@ class ClassTest(unittest.TestCase):
                 statements.Class(
                     'c',
                     statements.Block([
-                        statements.Assignment(
+                        statements.assignment(
                             exprs.ref('a'),
                             exprs.literal(builtins_.int_(1)),
                         ),
@@ -215,7 +215,7 @@ class NamespaceTest(unittest.TestCase):
             (
                 statements.Namespace(
                     statements.Block([
-                        statements.Assignment(
+                        statements.assignment(
                             exprs.ref('a'),
                             exprs.literal(builtins_.int_(1)),
                         ),
@@ -227,7 +227,7 @@ class NamespaceTest(unittest.TestCase):
             (
                 statements.Namespace(
                     statements.Block([
-                        statements.Assignment(
+                        statements.assignment(
                             exprs.ref('a'),
                             exprs.literal(builtins_.int_(1)),
                         ),
@@ -268,7 +268,7 @@ class NamespaceTest(unittest.TestCase):
                     lexer.TokenStream(),
                     statements.Namespace(
                         body=statements.Block([
-                            statements.Assignment(
+                            statements.assignment(
                                 exprs.ref('a'),
                                 exprs.literal(builtins_.int_(1)),
                             ),
@@ -292,7 +292,7 @@ class NamespaceTest(unittest.TestCase):
                     statements.Namespace(
                         _name='n',
                         body=statements.Block([
-                            statements.Assignment(
+                            statements.assignment(
                                 exprs.ref('a'),
                                 exprs.literal(builtins_.int_(1)),
                             ),
@@ -318,7 +318,7 @@ class IfTest(unittest.TestCase):
                 statements.If(
                     exprs.literal(builtins_.false),
                     statements.Block([
-                        statements.Assignment(
+                        statements.assignment(
                             exprs.ref('a'),
                             exprs.literal(builtins_.int_(1)),
                         ),
@@ -331,7 +331,7 @@ class IfTest(unittest.TestCase):
                 statements.If(
                     exprs.literal(builtins_.true),
                     statements.Block([
-                        statements.Assignment(
+                        statements.assignment(
                             exprs.ref('a'),
                             exprs.literal(builtins_.int_(1)),
                         ),
@@ -370,7 +370,7 @@ class IfTest(unittest.TestCase):
                     statements.If(
                         exprs.ref('false'),
                         statements.Block([
-                            statements.Assignment(
+                            statements.assignment(
                                 exprs.ref('a'),
                                 exprs.literal(builtins_.int_(1)),
                             ),
@@ -403,13 +403,13 @@ class IfTest(unittest.TestCase):
                     statements.If(
                         exprs.ref('false'),
                         statements.Block([
-                            statements.Assignment(
+                            statements.assignment(
                                 exprs.ref('a'),
                                 exprs.literal(builtins_.int_(1)),
                             ),
                         ]),
                         statements.Block([
-                            statements.Assignment(
+                            statements.assignment(
                                 exprs.ref('a'),
                                 exprs.literal(builtins_.int_(2)),
                             ),
@@ -438,7 +438,7 @@ class WhileTest(unittest.TestCase):
                 exprs.literal(builtins_.int_(10)),
             ),
             statements.Block([
-                statements.Assignment(
+                statements.assignment(
                     exprs.ref('a'),
                     exprs.BinaryOperation(
                         exprs.BinaryOperation.Operator.ADD,
@@ -446,7 +446,7 @@ class WhileTest(unittest.TestCase):
                         exprs.literal(builtins_.int_(1)),
                     )
                 ),
-                statements.Assignment(
+                statements.assignment(
                     exprs.ref('b'),
                     exprs.BinaryOperation(
                         exprs.BinaryOperation.Operator.MUL,
@@ -479,7 +479,7 @@ class WhileTest(unittest.TestCase):
                     statements.While(
                         exprs.ref('false'),
                         statements.Block([
-                            statements.Assignment(
+                            statements.assignment(
                                 exprs.ref('a'),
                                 exprs.literal(builtins_.int_(1)),
                             ),
@@ -491,6 +491,91 @@ class WhileTest(unittest.TestCase):
             with self.subTest(state=state, result=result):
                 self.assertEqual(
                     statements.While.load(
+                        statements.Statement.default_scope(),
+                        state,
+                    ),
+                    result
+                )
+
+
+class ForTest(unittest.TestCase):
+    def test_eval(self):
+        scope = vals.Scope({'b': builtins_.int_(1)})
+        statements.For(
+            exprs.Assignment(
+                exprs.ref('a'),
+                exprs.literal(builtins_.int_(1)),
+            ),
+            exprs.BinaryOperation(
+                exprs.BinaryOperation.Operator.LT,
+                exprs.ref('a'),
+                exprs.literal(builtins_.int_(10)),
+            ),
+            exprs.Inc(exprs.Inc.PreIncrement(), exprs.ref('a')),
+            statements.Block([
+                statements.assignment(
+                    exprs.ref('b'),
+                    exprs.BinaryOperation(
+                        exprs.BinaryOperation.Operator.MUL,
+                        exprs.ref('b'),
+                        exprs.literal(builtins_.int_(2)),
+                    )
+                ),
+            ]),
+        ).eval(scope)
+        self.assertEqual(scope['b'], builtins_.int_(512))
+
+    def test_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[statements.Statement]]]([
+            (
+                lexer.TokenStream([
+                    _tok('for'),
+                    _tok('('),
+                    _tok('i', 'id'),
+                    _tok('='),
+                    _tok('0', 'int'),
+                    _tok(';'),
+                    _tok('i', 'id'),
+                    _tok('<'),
+                    _tok('10', 'int'),
+                    _tok(';'),
+                    _tok('++'),
+                    _tok('i', 'id'),
+                    _tok(')'),
+                    _tok('{'),
+                    _tok('b', 'id'),
+                    _tok('='),
+                    _tok('1', 'int'),
+                    _tok(';'),
+                    _tok('}'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    statements.For(
+                        exprs.Assignment(
+                            exprs.ref('i'), exprs.literal(builtins_.int_(0))),
+                        exprs.BinaryOperation(
+                            exprs.BinaryOperation.Operator.LT,
+                            exprs.ref('i'),
+                            exprs.literal(builtins_.int_(10)),
+                        ),
+                        exprs.Inc(
+                            exprs.Inc.PreIncrement(),
+                            exprs.ref('i'),
+                        ),
+                        statements.Block([
+                            statements.assignment(
+                                exprs.ref('b'),
+                                exprs.literal(builtins_.int_(1)),
+                            ),
+                        ])
+                    )
+                ),
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(
+                    statements.For.load(
                         statements.Statement.default_scope(),
                         state,
                     ),

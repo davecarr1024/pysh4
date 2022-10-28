@@ -17,6 +17,7 @@ class Expr(ABC):
         return parser.Or[Expr]([
             BinaryOperation.load,
             UnaryOperation.load,
+            Assignment.load,
             Expr.load_operand,
         ])(scope, state)
 
@@ -268,6 +269,27 @@ def literal(value: vals.Val) -> Ref:
 
 def ref(name: str) -> Ref:
     return Ref(Ref.Name(name))
+
+
+@dataclass(frozen=True, repr=False)
+class Assignment(Expr):
+    ref: Ref
+    value: Expr
+
+    def __repr__(self) -> str:
+        return f'{self.ref} = {self.value}'
+
+    def eval(self, scope: vals.Scope) -> vals.Val:
+        value = self.value.eval(scope)
+        self.ref.assign(scope, value)
+        return value
+
+    @classmethod
+    def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult[Expr]:
+        state, ref = Ref.load(Expr.default_scope(), state)
+        state = parser.consume_token(state, '=')
+        state, value = Expr.load_state(state)
+        return state, Assignment(ref, value)
 
 
 @dataclass(frozen=True, repr=False)

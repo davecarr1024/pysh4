@@ -27,11 +27,11 @@ class Statement(ABC):
             Return.load,
             Class.load,
             Namespace.load,
-            Assignment.load,
-            Expr.load,
+            ExprStatement.load,
             func.Decl.load,
             If.load,
             While.load,
+            For.load,
         ])(scope, state)
 
     @staticmethod
@@ -80,29 +80,8 @@ class Block(Iterable[Statement], Sized):
         return Block.loader(Statement.default_scope())(parser.Scope[Block]({}), state)
 
 
-@dataclass(frozen=True, repr=False)
-class Assignment(Statement):
-    ref: exprs.Ref
-    value: exprs.Expr
-
-    def __repr__(self) -> str:
-        return f'{self.ref} = {self.value};'
-
-    def eval(self, scope: vals.Scope) -> Result:
-        self.ref.assign(scope, self.value.eval(scope))
-        return Result()
-
-    @classmethod
-    def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
-        state, ref = exprs.Ref.load(exprs.Expr.default_scope(), state)
-        state = parser.consume_token(state, '=')
-        state, value = exprs.Expr.load_state(state)
-        state = parser.consume_token(state, ';')
-        return state, Assignment(ref, value)
-
-
 @dataclass(frozen=True)
-class Expr(Statement):
+class ExprStatement(Statement):
     value: exprs.Expr
 
     def eval(self, scope: vals.Scope) -> Result:
@@ -113,7 +92,11 @@ class Expr(Statement):
     def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
         state, value = exprs.Expr.load_state(state)
         state = parser.consume_token(state, ';')
-        return state, Expr(value)
+        return state, ExprStatement(value)
+
+
+def assignment(ref: exprs.Ref, value: exprs.Expr) -> ExprStatement:
+    return ExprStatement(exprs.Assignment(ref, value))
 
 
 @dataclass(frozen=True)
@@ -261,3 +244,36 @@ class While(Statement):
         state = parser.consume_token(state, ')')
         state, body = Block.load(state)
         return state, While(cond, body)
+
+
+@dataclass(frozen=True, repr=False)
+class For(Statement):
+    init: exprs.Expr
+    cond: exprs.Expr
+    step: exprs.Expr
+    body: Block
+
+    def __repr__(self) -> str:
+        return f'for ({self.init}; {self.cond}; {self.step}) {self.body}'
+
+    def eval(self, scope: vals.Scope) -> Result:
+        self.init.eval(scope)
+        while builtins_.Bool.from_val(scope, self.cond.eval(scope)):
+            result = self.body.eval(scope)
+            if result.return_ is not None:
+                return result
+            self.step.eval(scope)
+        return Result()
+
+    @classmethod
+    def load(cls, scope: parser.Scope['Statement'], state: lexer.TokenStream) -> parser.StateAndResult['Statement']:
+        state = parser.consume_token(state, 'for')
+        state = parser.consume_token(state, '(')
+        state, init = exprs.Expr.load_state(state)
+        state = parser.consume_token(state, ';')
+        state, cond = exprs.Expr.load_state(state)
+        state = parser.consume_token(state, ';')
+        state, step = exprs.Expr.load_state(state)
+        state = parser.consume_token(state, ')')
+        state, body = Block.load(state)
+        return state, For(init, cond, step, body)
