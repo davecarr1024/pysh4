@@ -776,3 +776,80 @@ class ExprTest(unittest.TestCase):
         ]):
             with self.subTest(state=state, result=result):
                 self.assertEqual(exprs.Expr.load_state(state), result)
+
+
+class IncTest(unittest.TestCase):
+    def test_eval(self):
+        for inc, eval_val, scope_val in list[Tuple[exprs.Inc, vals.Val, vals.Val]]([
+            (
+                exprs.Inc(exprs.Inc.PreIncrement(), exprs.ref('a')),
+                builtins_.int_(1),
+                builtins_.int_(1),
+            ),
+            (
+                exprs.Inc(exprs.Inc.PostIncrement(), exprs.ref('a')),
+                builtins_.int_(0),
+                builtins_.int_(1),
+            ),
+            (
+                exprs.Inc(exprs.Inc.PreDecrement(), exprs.ref('a')),
+                builtins_.int_(-1),
+                builtins_.int_(-1),
+            ),
+            (
+                exprs.Inc(exprs.Inc.PostDecrement(), exprs.ref('a')),
+                builtins_.int_(0),
+                builtins_.int_(-1),
+            ),
+        ]):
+            with self.subTest(inc=inc, eval_val=eval_val, scope_val=scope_val):
+                scope = vals.Scope({'a': builtins_.int_(0)})
+                self.assertEqual(inc.eval(scope), eval_val)
+                self.assertEqual(scope['a'], scope_val)
+
+    def test_load(self):
+        for state, result in list[Tuple[lexer.TokenStream, parser.StateAndResult[exprs.Expr]]]([
+            (
+                lexer.TokenStream([
+                    _tok('++'),
+                    _tok('a', 'id'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.Inc(exprs.Inc.PreIncrement(), exprs.ref('a')),
+                )
+            ),
+            (
+                lexer.TokenStream([
+                    _tok('a', 'id'),
+                    _tok('++'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.Inc(exprs.Inc.PostIncrement(), exprs.ref('a')),
+                )
+            ),
+            (
+                lexer.TokenStream([
+                    _tok('--'),
+                    _tok('a', 'id'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.Inc(exprs.Inc.PreDecrement(), exprs.ref('a')),
+                )
+            ),
+            (
+                lexer.TokenStream([
+                    _tok('a', 'id'),
+                    _tok('--'),
+                ]),
+                (
+                    lexer.TokenStream(),
+                    exprs.Inc(exprs.Inc.PostDecrement(), exprs.ref('a')),
+                )
+            ),
+        ]):
+            with self.subTest(state=state, result=result):
+                self.assertEqual(exprs.Inc.load(
+                    exprs.Expr.default_scope(), state), result)

@@ -4,7 +4,13 @@ from . import builtins_, exprs, statements, vals
 
 
 def eval(input: str, scope: Optional[vals.Scope] = None) -> vals.Val:
-    operators: Sequence[str] = [op.value for op in exprs.BinaryOperation.Operator] + [
+    operators: Sequence[str] = ['++', '--'] + [
+        op.value
+        for op in exprs.BinaryOperation.Operator
+    ] + [
+        op.value
+        for op in exprs.UnaryOperation.Operator
+    ] + [
         '(',
         ')',
         '{',

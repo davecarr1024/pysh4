@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Iterable, Iterator, Mapping, Sequence, Sized
-from . import errors, vals
+from . import errors, vals, builtins_
 from core import lexer, parser
 
 
@@ -16,6 +16,7 @@ class Expr(ABC):
     def load(cls, scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
         return parser.Or[Expr]([
             BinaryOperation.load,
+            UnaryOperation.load,
             Expr.load_operand,
         ])(scope, state)
 
@@ -29,6 +30,7 @@ class Expr(ABC):
     @staticmethod
     def load_operand(scope: parser.Scope['Expr'], state: lexer.TokenStream) -> parser.StateAndResult['Expr']:
         return parser.Or[Expr]([
+            Inc.load,
             Ref.load,
             ParenExpr.load,
         ])(scope, state)
@@ -359,3 +361,104 @@ class ParenExpr(Expr):
         state, value = Expr.load(scope, state)
         state = parser.consume_token(state, ')')
         return state, ParenExpr(value)
+
+
+@dataclass(frozen=True, repr=False)
+class Inc(Expr):
+    class _Impl(ABC):
+        @abstractmethod
+        def str(self, ref: Ref) -> str:
+            ...
+
+        @abstractmethod
+        def eval(self, scope: vals.Scope, ref: Ref) -> vals.Val:
+            ...
+
+        @classmethod
+        @abstractmethod
+        def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult[Expr]:
+            ...
+
+    @dataclass(frozen=True)
+    class PreIncrement(_Impl):
+        def str(self, ref: Ref) -> str:
+            return f'++{ref}'
+
+        def eval(self, scope: vals.Scope, ref: Ref) -> vals.Val:
+            ref.assign(scope, ref.eval(scope)['__add__'](
+                scope, vals.Args([vals.Arg(builtins_.int_(1))])))
+            return ref.eval(scope)
+
+        @classmethod
+        def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult[Expr]:
+            state = parser.consume_token(state, '++')
+            state, ref = Ref.load(scope, state)
+            return state, Inc(cls(), ref)
+
+    @dataclass(frozen=True)
+    class PostIncrement(_Impl):
+        def str(self, ref: Ref) -> str:
+            return f'{ref}++'
+
+        def eval(self, scope: vals.Scope, ref: Ref) -> vals.Val:
+            val = ref.eval(scope)
+            ref.assign(scope, ref.eval(scope)['__add__'](
+                scope, vals.Args([vals.Arg(builtins_.int_(1))])))
+            return val
+
+        @classmethod
+        def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult[Expr]:
+            state, ref = Ref.load(scope, state)
+            state = parser.consume_token(state, '++')
+            return state, Inc(cls(), ref)
+
+    @dataclass(frozen=True)
+    class PreDecrement(_Impl):
+        def str(self, ref: Ref) -> str:
+            return f'--{ref}'
+
+        def eval(self, scope: vals.Scope, ref: Ref) -> vals.Val:
+            ref.assign(scope, ref.eval(scope)['__sub__'](
+                scope, vals.Args([vals.Arg(builtins_.int_(1))])))
+            return ref.eval(scope)
+
+        @classmethod
+        def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult[Expr]:
+            state = parser.consume_token(state, '--')
+            state, ref = Ref.load(scope, state)
+            return state, Inc(cls(), ref)
+
+    @dataclass(frozen=True)
+    class PostDecrement(_Impl):
+        def str(self, ref: Ref) -> str:
+            return f'{ref}--'
+
+        def eval(self, scope: vals.Scope, ref: Ref) -> vals.Val:
+            val = ref.eval(scope)
+            ref.assign(scope, ref.eval(scope)['__sub__'](
+                scope, vals.Args([vals.Arg(builtins_.int_(1))])))
+            return val
+
+        @classmethod
+        def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult[Expr]:
+            state, ref = Ref.load(scope, state)
+            state = parser.consume_token(state, '--')
+            return state, Inc(cls(), ref)
+
+    _impl: _Impl
+    ref: Ref
+
+    def __repr__(self) -> str:
+        return self._impl.str(self.ref)
+
+    def eval(self, scope: vals.Scope) -> vals.Val:
+        return self._impl.eval(scope, self.ref)
+
+    @classmethod
+    def load(cls, scope: parser.Scope[Expr], state: lexer.TokenStream) -> parser.StateAndResult[Expr]:
+        return parser.Or[Expr]([
+            Inc.PreIncrement.load,
+            Inc.PostIncrement.load,
+            Inc.PreDecrement.load,
+            Inc.PostDecrement.load,
+        ])(scope, state)

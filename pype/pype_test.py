@@ -202,7 +202,15 @@ class PypeTest(unittest.TestCase):
             (
                 '!true;',
                 builtins_.false,
-            )
+            ),
+            ('a = 0; ++a; a;', builtins_.int_(1)),
+            ('a = 0; ++a;', builtins_.int_(1)),
+            ('a = 0; a++; a;', builtins_.int_(1)),
+            ('a = 0; a++;', builtins_.int_(0)),
+            ('a = 0; --a; a;', builtins_.int_(-1)),
+            ('a = 0; --a;', builtins_.int_(-1)),
+            ('a = 0; a--; a;', builtins_.int_(-1)),
+            ('a = 0; a--;', builtins_.int_(0)),
         ]):
             with self.subTest(input=input, result=result):
                 self.assertEqual(pype.eval(input), result)
